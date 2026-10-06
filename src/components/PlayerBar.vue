@@ -1,26 +1,26 @@
 <template>
   <div class="player-bar">
     <div
-      v-for="player in activePlayers"
-      :key="player.id"
+      v-for="(player, idx) in activePlayers"
+      :key="player?.id ?? idx"
       :class="[
         'player-card neo-card',
         {
-          'is-active': curPlayerId === player.id,
-          'is-dead': !alive[player.id]
+          'is-active': curPlayerId === idx || curPlayerId === player?.id,
+          'is-dead': !isPlayerAlive(idx, player?.id)
         }
       ]"
-      :style="{ backgroundColor: player.bgPastel }"
+      :style="{ backgroundColor: player?.bgPastel || '#ffffff' }"
     >
       <div class="card-top">
-        <span class="player-dot" :style="{ backgroundColor: player.color }"></span>
-        <span class="player-name" :style="{ color: player.textPastel }">{{ player.name }}</span>
-        <span v-if="!alive[player.id]" class="dead-badge">Gugur</span>
+        <span class="player-dot" :style="{ backgroundColor: player?.color || '#334155' }"></span>
+        <span class="player-name" :style="{ color: player?.textPastel || 'inherit' }">{{ player?.name || ('Pemain ' + (idx + 1)) }}</span>
+        <span v-if="!isPlayerAlive(idx, player?.id)" class="dead-badge">Gugur</span>
       </div>
 
       <div class="card-details">
-        <span class="team-sticker">{{ getTeamText(player.id) }}</span>
-        <span class="type-sticker">{{ getSlotText(player.id) }}</span>
+        <span class="team-sticker">{{ getTeamText(player?.id ?? idx) }}</span>
+        <span class="type-sticker">{{ getSlotText(idx, player?.id) }}</span>
       </div>
     </div>
   </div>
@@ -37,19 +37,19 @@ const props = defineProps({
   },
   curPlayerId: {
     type: Number,
-    required: true
+    default: 0
   },
   alive: {
     type: Array,
-    required: true
+    default: () => [true, true, true, true, true]
   },
   mode: {
     type: String,
-    required: true
+    default: 'team'
   },
   slots: {
     type: Array,
-    required: true
+    default: () => ['human', 'easy', 'easy', 'easy', 'hard']
   },
   lone: {
     type: Number,
@@ -62,27 +62,45 @@ const props = defineProps({
 });
 
 const activePlayers = computed(() => {
+  if (!props.players || !Array.isArray(props.players)) return PLAYERS.slice(0, 4);
   return props.mapId === 'default-lane' ? props.players.slice(0, 2) : props.players;
 });
 
+function isPlayerAlive(idx, id) {
+  if (!props.alive || !Array.isArray(props.alive)) return true;
+  if (props.alive[idx] !== undefined) return props.alive[idx];
+  if (id !== undefined && props.alive[id] !== undefined) return props.alive[id];
+  return true;
+}
+
 function getTeamText(id) {
+  if (props.mapId === 'double-last-line-defence') {
+    if (props.mode === '4v1') {
+      return id === 4 ? 'Solo Benteng' : 'Koalisi 4';
+    }
+    return 'FFA';
+  }
   if (props.mode === 'team') {
     return id % 2 === 0 ? 'Tim A' : 'Tim B';
   } else if (props.mode === 'solo') {
     return id === props.lone ? 'Solo' : 'Koalisi';
+  } else if (props.mode === 'duel') {
+    return id === 0 ? 'Putih' : 'Hitam';
   }
   return 'FFA';
 }
 
-function getSlotText(id) {
-  return DIFFICULTY_LABELS[props.slots[id]] || props.slots[id];
+function getSlotText(idx, id) {
+  if (!props.slots || !Array.isArray(props.slots)) return 'Human';
+  const slotVal = props.slots[idx] || (id !== undefined ? props.slots[id] : null) || 'human';
+  return DIFFICULTY_LABELS[slotVal] || slotVal;
 }
 </script>
 
 <style scoped>
 .player-bar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 10px;
   margin: 14px 0;
 }

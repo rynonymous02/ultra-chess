@@ -9,6 +9,15 @@
 
     <div class="nav-actions">
       <button
+        v-if="inGame"
+        class="menu-nav-btn"
+        @click="$emit('open-menu')"
+        title="Kembali ke Menu Utama"
+      >
+        <span>⬅ Menu</span>
+      </button>
+
+      <button
         class="icon-btn"
         @click="$emit('toggle-sound')"
         :title="soundEnabled ? 'Matikan Suara' : 'Nyalakan Suara'"
@@ -40,10 +49,14 @@ defineProps({
   soundEnabled: {
     type: Boolean,
     default: true
+  },
+  inGame: {
+    type: Boolean,
+    default: false
   }
 });
 
-defineEmits(['toggle-theme', 'toggle-sound']);
+defineEmits(['toggle-theme', 'toggle-sound', 'open-menu']);
 </script>
 
 <style scoped>
@@ -98,5 +111,13 @@ defineEmits(['toggle-theme', 'toggle-sound']);
   padding: 0;
   border-radius: var(--radius-sm);
   font-size: 16px;
+}
+
+.menu-nav-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  background: var(--pastel-yellow);
+  color: #1e293b;
 }
 </style>

@@ -1,6 +1,17 @@
 <template>
   <div class="board-wrapper">
-    <div :class="['board-container neo-card', { 'is-8x8': boardSize === 8 }]">
+    <div
+      :class="['board-container neo-card', { 'is-8x8': boardSize === 8 }]"
+      :data-board-skin="boardSkin"
+      :style="{
+        '--sq-size': dynamicSquareSize,
+        '--sq-light': currentSkinVars.light,
+        '--sq-dark': currentSkinVars.dark,
+        '--sq-sel': currentSkinVars.sel,
+        '--sq-last': currentSkinVars.last,
+        '--sq-check': currentSkinVars.check
+      }"
+    >
       <div
         class="chess-grid"
         :style="{
@@ -47,8 +58,10 @@ import {
   isValidCell,
   PIECE_SYMBOLS,
   PLAYERS,
+  BOARD_SKINS,
   toAlgebraic
 } from '../models/ChessModel.js';
+import { getMapById } from '../maps/index.js';
 
 const props = defineProps({
   board: {
@@ -78,20 +91,54 @@ const props = defineProps({
   isHumanTurn: {
     type: Boolean,
     default: true
+  },
+  mapId: {
+    type: String,
+    default: 'plus-lane'
+  },
+  boardSkin: {
+    type: String,
+    default: 'merah-putih'
   }
 });
 
 const emit = defineEmits(['select-cell', 'make-move']);
 
-const boardSize = computed(() => props.board.length || 14);
+const currentSkinVars = computed(() => {
+  return (BOARD_SKINS && BOARD_SKINS[props.boardSkin]) || BOARD_SKINS['merah-putih'];
+});
+
+const boardSize = computed(() => (props.board && props.board.length) ? props.board.length : 14);
+const currentMapData = computed(() => getMapById(props.mapId));
+
+const dynamicSquareSize = computed(() => {
+  const N = boardSize.value;
+  if (N <= 8) return 'min(10vw, 56px)';
+  if (N <= 10) return 'min(7.8vw, 48px)';
+  if (N <= 12) return 'min(6.6vw, 44px)';
+  if (N <= 14) return 'min(5.8vw, 40px)';
+  return 'min(4.8vw, 34px)';
+});
 
 function isValid(r, c) {
+  if (r < 0 || c < 0 || r >= boardSize.value || c >= boardSize.value) return false;
+  if (currentMapData.value?.tiles && Array.isArray(currentMapData.value.tiles)) {
+    const tile = currentMapData.value.tiles[r]?.[c];
+    if (tile === 'void' || tile === 'omitted') return false;
+    if (tile === 'wall' || tile === 'obstacle') return false;
+    if (tile === 'normal') return true;
+  }
   return isValidCell(r, c, boardSize.value);
+}
+
+function isWall(r, c) {
+  if (!currentMapData.value?.tiles || !Array.isArray(currentMapData.value.tiles)) return false;
+  return currentMapData.value.tiles[r]?.[c] === 'wall' || currentMapData.value.tiles[r]?.[c] === 'obstacle';
 }
 
 function getPiece(r, c) {
   if (!isValid(r, c)) return null;
-  return props.board[r]?.[c] || null;
+  return props.board?.[r]?.[c] || null;
 }
 
 function getPieceSymbol(r, c) {
@@ -102,7 +149,7 @@ function getPieceSymbol(r, c) {
 function getPieceColor(r, c) {
   const p = getPiece(r, c);
   if (!p) return 'transparent';
-  return props.players[p.p]?.color || PLAYERS[p.p]?.color || 'transparent';
+  return props.players?.[p.p]?.color || PLAYERS[p.p]?.color || 'transparent';
 }
 
 function isSelected(r, c) {
@@ -116,6 +163,7 @@ function isLastMove(r, c) {
 }
 
 function isMoveTarget(r, c) {
+  if (!Array.isArray(props.legalMoves)) return false;
   return props.legalMoves.some(m => m[2] === r && m[3] === c);
 }
 
@@ -127,10 +175,13 @@ function isCaptureTarget(r, c) {
 function isKingInCheck(r, c) {
   const p = getPiece(r, c);
   if (!p || p.t !== 'K') return false;
-  return !!props.inCheckPlayers[p.p];
+  return !!(props.inCheckPlayers || [])[p.p];
 }
 
 function getCellClasses(r, c) {
+  if (isWall(r, c)) {
+    return 'cell cell-wall';
+  }
   if (!isValid(r, c)) {
     return 'cell cell-omitted';
   }
@@ -153,14 +204,14 @@ function getCellAriaLabel(r, c) {
   const piece = getPiece(r, c);
   const notation = toAlgebraic(r, c, boardSize.value);
   if (!piece) return `Petak ${notation}`;
-  const playerName = props.players[piece.p]?.name || PLAYERS[piece.p]?.name || 'Pemain';
+  const playerName = props.players?.[piece.p]?.name || PLAYERS[piece.p]?.name || 'Pemain';
   return `Petak ${notation}: ${playerName} ${piece.t}`;
 }
 
 function handleCellClick(r, c) {
   if (!isValid(r, c)) return;
 
-  const targetMove = props.legalMoves.find(m => m[2] === r && m[3] === c);
+  const targetMove = (props.legalMoves || []).find(m => m[2] === r && m[3] === c);
   if (props.selectedCell && targetMove) {
     emit('make-move', targetMove);
     return;
@@ -281,7 +332,8 @@ function handleCellClick(r, c) {
 .chess-piece {
   font-size: calc(var(--sq-size) * 0.82);
   line-height: 1;
-  filter: drop-shadow(0 2px 0px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.95)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.65));
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.4);
   transition: transform 0.15s ease;
   z-index: 1;
 }

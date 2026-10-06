@@ -1,15 +1,17 @@
 <template>
-  <div class="app-layout">
+  <div class="app-layout" :data-board-skin="boardSkin">
     <div :class="['app-container', { 'is-game': currentScreen === 'game' }]">
       <!-- Navbar -->
       <GameNavbar
         :is-dark="isDark"
         :sound-enabled="soundEnabled"
+        :in-game="currentScreen === 'game'"
         @toggle-theme="toggleTheme"
         @toggle-sound="toggleSound"
+        @open-menu="goToMenu"
       />
 
-      <!-- Layout Grid (Setup: 2 Columns with Map | Game: 1 Centered Column) -->
+      <!-- Setup View: 2 Kolom (Menu & Map Skirmish) -->
       <div v-if="currentScreen === 'setup'" class="setup-grid">
         <main class="main-column">
           <GameSetup
@@ -17,6 +19,7 @@
             :lone="gameConfig.lone"
             :initial-slots="gameConfig.slots"
             :players="players"
+            :current-map="selectedMap"
             @update:players="players = $event"
             @update:mode="gameConfig.mode = $event"
             @update:lone="gameConfig.lone = $event"
@@ -28,45 +31,50 @@
           <MapSkirmishCard
             :current-map="selectedMap"
             :players="players"
-            @update:map="selectedMap = $event"
+            :skin="boardSkin"
+            @update:skin="handleSkinChange"
+            @update:map="handleMapChange"
+            @open-editor="isEditorOpen = true"
           />
         </aside>
       </div>
 
-      <!-- In-Game: Bersih, Terpusat, Tanpa Peta/Navigasi Berlebih -->
-      <main v-else class="game-layout">
+      <!-- In-Game View: 1 Kolom Terpusat (Hanya muncul saat game) -->
+      <main v-if="currentScreen === 'game'" class="game-layout">
         <!-- Status Giliran & Alert Skak -->
         <StatusBanner
           :cur-player="curPlayer"
-          :cur-slot="controllerState.slots[controllerState.cur]"
-          :in-check-names="controllerState.inCheckNames"
-          :event-message="controllerState.msg"
+          :cur-slot="controllerState.slots ? controllerState.slots[controllerState.cur] : 'human'"
+          :in-check-names="controllerState.inCheckNames || []"
+          :event-message="controllerState.msg || ''"
           :game-over="controllerState.over"
           :is-bot-thinking="controllerState.isBotThinking"
           @restart-game="handleRestartGame"
           @open-menu="goToMenu"
         />
 
-        <!-- Papan Catur 14x14 -->
+        <!-- Papan Catur -->
         <ChessBoard
-          :board="controllerState.board"
+          :board="controllerState.board || []"
           :players="controllerState.players || players"
           :selected-cell="controllerState.selectedCell"
           :last-move="controllerState.last"
-          :legal-moves="controllerState.legalMoves"
-          :in-check-players="controllerState.checks"
+          :legal-moves="controllerState.legalMoves || []"
+          :in-check-players="controllerState.checks || []"
           :is-human-turn="controllerState.isHumanTurn"
+          :map-id="controllerState.mapId"
+          :board-skin="boardSkin"
           @select-cell="handleSelectCell"
           @make-move="handleMakeMove"
         />
 
-        <!-- 4 Pemain Status Bar -->
+        <!-- Status Bar Pemain -->
         <PlayerBar
           :players="controllerState.players || players"
           :cur-player-id="controllerState.cur"
-          :alive="controllerState.alive"
-          :mode="controllerState.mode"
-          :slots="controllerState.slots"
+          :alive="controllerState.alive || []"
+          :mode="controllerState.mode || 'team'"
+          :slots="controllerState.slots || []"
           :lone="gameConfig.lone"
           :map-id="controllerState.mapId"
         />
@@ -78,8 +86,15 @@
         />
 
         <!-- Catatan Langkah -->
-        <MoveHistory :history="controllerState.history" />
+        <MoveHistory :history="controllerState.history || []" />
       </main>
+
+      <!-- Map Editor Modal (Terpisah dari alur layar utama) -->
+      <MapEditor
+        v-if="isEditorOpen"
+        @close="isEditorOpen = false"
+        @map-saved="handleMapSaved"
+      />
     </div>
   </div>
 </template>
@@ -96,11 +111,22 @@ import StatusBanner from './components/StatusBanner.vue';
 import PlayerBar from './components/PlayerBar.vue';
 import MoveHistory from './components/MoveHistory.vue';
 import GameControls from './components/GameControls.vue';
+import { getMapById } from './maps/index.js';
+import MapEditor from './components/MapEditor.vue';
 import { setSoundEnabled, isSoundEnabled } from './utils/sound.js';
 
 const currentScreen = ref('setup'); // 'setup' | 'game'
 const isDark = ref(false);
 const soundEnabled = ref(true);
+const isEditorOpen = ref(false);
+const boardSkin = ref(localStorage.getItem('ultra_catur_board_skin') || 'merah-putih');
+
+function handleSkinChange(newSkin) {
+  boardSkin.value = newSkin;
+  localStorage.setItem('ultra_catur_board_skin', newSkin);
+  document.documentElement.setAttribute('data-board-skin', newSkin);
+  document.body.setAttribute('data-board-skin', newSkin);
+}
 
 const selectedMap = ref('plus-lane');
 
@@ -114,7 +140,7 @@ const players = ref(
 const gameConfig = reactive({
   mode: 'team',
   lone: 0,
-  slots: ['human', 'easy', 'easy', 'easy']
+  slots: ['human', 'easy', 'easy', 'easy', 'hard']
 });
 
 const controller = new GameController({
@@ -127,9 +153,9 @@ const controllerState = reactive({
   board: [],
   cur: 0,
   players: [],
-  alive: [true, true, true, true],
-  slots: ['human', 'easy', 'easy', 'easy'],
-  checks: [false, false, false, false],
+  alive: [true, true, true, true, true],
+  slots: ['human', 'easy', 'easy', 'easy', 'hard'],
+  checks: [false, false, false, false, false],
   inCheckNames: [],
   last: null,
   over: null,
@@ -172,14 +198,32 @@ function updateFromController(state) {
 
 let unsubscribe = null;
 
+function handleMapChange(newMap) {
+  selectedMap.value = newMap;
+  if (newMap === 'double-last-line-defence') {
+    gameConfig.mode = '4v1';
+  } else if (newMap === 'default-lane') {
+    gameConfig.mode = 'duel';
+  } else if (gameConfig.mode === '4v1' || gameConfig.mode === 'duel') {
+    gameConfig.mode = 'team';
+  }
+}
+
+function handleMapSaved(newMapId) {
+  selectedMap.value = newMapId;
+}
+
 function handleStartGame(config) {
   gameConfig.mode = config.mode;
   gameConfig.lone = config.lone;
   gameConfig.slots = [...config.slots];
 
   const activePlayers = config.players ? [...config.players] : [...players.value];
-  const orderedPlayers = [1, 2, 3, 4].map(spawnNum => {
-    return activePlayers.find(p => p.spawn === spawnNum) || activePlayers[spawnNum - 1];
+  const selectedMapObj = getMapById(selectedMap.value);
+  const spawnCount = selectedMapObj?.playersCount || (selectedMap.value === 'double-last-line-defence' ? 5 : selectedMap.value === 'default-lane' ? 2 : 4);
+  const orderedPlayers = Array.from({ length: spawnCount }, (_, i) => i + 1).map((spawnNum, idx) => {
+    const found = activePlayers.find(p => p.spawn === spawnNum) || activePlayers[spawnNum - 1] || PLAYERS[spawnNum - 1] || PLAYERS[idx] || { id: idx, name: 'Pemain ' + (idx + 1) };
+    return { ...found, id: idx };
   });
 
   controller.startNewGame({
@@ -198,7 +242,7 @@ function handleRestartGame() {
 }
 
 function goToMenu() {
-  controller.restart();
+  controller.stop();
   currentScreen.value = 'setup';
 }
 
@@ -225,12 +269,14 @@ onMounted(() => {
   updateFromController(controller.getControllerState());
 
   document.documentElement.setAttribute('data-theme', 'light');
+  document.documentElement.setAttribute('data-board-skin', boardSkin.value);
+  document.body.setAttribute('data-board-skin', boardSkin.value);
   soundEnabled.value = isSoundEnabled();
 });
 
 onUnmounted(() => {
   if (unsubscribe) unsubscribe();
-  controller.destroy();
+  if (controller.stop) controller.stop();
 });
 </script>
 
@@ -252,7 +298,7 @@ onUnmounted(() => {
   max-width: 680px;
 }
 
-/* Setup: 2 Kolom Berdampingan */
+/* Setup: 2 Kolom */
 .setup-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;

@@ -82,7 +82,7 @@ function getRatingTitle(r) {
 }
 
 watch(
-  () => props.history.length,
+  () => props.history?.length || 0,
   async () => {
     await nextTick();
     if (listRef.value) {

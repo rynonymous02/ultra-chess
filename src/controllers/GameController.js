@@ -70,6 +70,13 @@ export class GameController {
     this.checkAndTriggerBot();
   }
 
+  stop() {
+    clearTimeout(this.botTimer);
+    this.isBotThinking = false;
+    this.selectedCell = null;
+    this.legalMoves = [];
+  }
+
   selectCell(r, c) {
     const state = this.model.getState();
     if (state.over) return;

@@ -1,17 +1,81 @@
 // MVC Architecture - MODEL
-// Model: Pure business logic supporting 14x14 Plus (4P) and 8x8 Standard (1v1)
+// Model: Pure business logic supporting 14x14 Plus, 8x8 Standard, and Double-Last-Line Defence (5P)
+import { getMapById, getAllMaps } from '../maps/index.js';
 
 export const BOARD_SIZE = 14;
+
+export const BOARD_SKINS = {
+  'merah-putih': {
+    name: 'Merah Putih',
+    color1: '#e11d48',
+    color2: '#ffffff',
+    light: '#fff1f2',
+    dark: '#e11d48',
+    sel: '#fde047',
+    last: '#fecdd3',
+    check: '#fb7185'
+  },
+  'hitam-putih': {
+    name: 'Hitam Putih',
+    color1: '#1e293b',
+    color2: '#ffffff',
+    light: '#f8fafc',
+    dark: '#1e293b',
+    sel: '#facc15',
+    last: '#64748b',
+    check: '#ef4444'
+  },
+  'biru-putih': {
+    name: 'Biru Putih',
+    color1: '#0284c7',
+    color2: '#ffffff',
+    light: '#f0f9ff',
+    dark: '#0284c7',
+    sel: '#38bdf8',
+    last: '#bae6fd',
+    check: '#ef4444'
+  },
+  'hijau-putih': {
+    name: 'Hijau Putih',
+    color1: '#15803d',
+    color2: '#ffffff',
+    light: '#f0fdf4',
+    dark: '#15803d',
+    sel: '#86efac',
+    last: '#bbf7d0',
+    check: '#ef4444'
+  },
+  'klasik-kayu': {
+    name: 'Klasik Kayu',
+    color1: '#b45309',
+    color2: '#fef3c7',
+    light: '#fef3c7',
+    dark: '#b45309',
+    sel: '#fde047',
+    last: '#fed7aa',
+    check: '#ef4444'
+  },
+  'ungu-neon': {
+    name: 'Ungu Neon',
+    color1: '#7e22ce',
+    color2: '#faf5ff',
+    light: '#faf5ff',
+    dark: '#7e22ce',
+    sel: '#c084fc',
+    last: '#e9d5ff',
+    check: '#ef4444'
+  }
+};
 
 export const COLOR_PRESETS = [
   { id: 'red', name: 'Merah', color: '#f43f5e', bgPastel: '#ffe4e6', borderPastel: '#fda4af', textPastel: '#9f1239' },
   { id: 'blue', name: 'Biru', color: '#0ea5e9', bgPastel: '#e0f2fe', borderPastel: '#7dd3fc', textPastel: '#0369a1' },
   { id: 'yellow', name: 'Kuning', color: '#eab308', bgPastel: '#fef9c3', borderPastel: '#fde047', textPastel: '#854d0e' },
   { id: 'green', name: 'Hijau', color: '#10b981', bgPastel: '#dcfce7', borderPastel: '#86efac', textPastel: '#166534' },
+  { id: 'dark', name: 'Hitam', color: '#334155', bgPastel: '#e2e8f0', borderPastel: '#94a3b8', textPastel: '#0f172a' },
   { id: 'purple', name: 'Ungu', color: '#a855f7', bgPastel: '#f3e8ff', borderPastel: '#d8b4fe', textPastel: '#6b21a8' },
   { id: 'orange', name: 'Oranye', color: '#f97316', bgPastel: '#ffedd5', borderPastel: '#fdba74', textPastel: '#9a3412' },
-  { id: 'cyan', name: 'Sian', color: '#06b6d4', bgPastel: '#cffafe', borderPastel: '#67e8f9', textPastel: '#155e75' },
-  { id: 'pink', name: 'Pink', color: '#ec4899', bgPastel: '#fce7f3', borderPastel: '#f472b6', textPastel: '#9d174d' }
+  { id: 'cyan', name: 'Sian', color: '#06b6d4', bgPastel: '#cffafe', borderPastel: '#67e8f9', textPastel: '#155e75' }
 ];
 
 export const PLAYERS = [
@@ -22,8 +86,7 @@ export const PLAYERS = [
     bgPastel: '#ffe4e6',
     borderPastel: '#fda4af',
     textPastel: '#9f1239',
-    zone: 'Selatan',
-    baseCoord: 'd1 – k2'
+    zone: 'Selatan'
   },
   {
     id: 1,
@@ -32,8 +95,7 @@ export const PLAYERS = [
     bgPastel: '#e0f2fe',
     borderPastel: '#7dd3fc',
     textPastel: '#0369a1',
-    zone: 'Barat',
-    baseCoord: 'a4 – b11'
+    zone: 'Barat'
   },
   {
     id: 2,
@@ -42,8 +104,7 @@ export const PLAYERS = [
     bgPastel: '#fef9c3',
     borderPastel: '#fde047',
     textPastel: '#854d0e',
-    zone: 'Utara',
-    baseCoord: 'd13 – k14'
+    zone: 'Utara'
   },
   {
     id: 3,
@@ -52,29 +113,16 @@ export const PLAYERS = [
     bgPastel: '#dcfce7',
     borderPastel: '#86efac',
     textPastel: '#166534',
-    zone: 'Timur',
-    baseCoord: 'm4 – n11'
-  }
-];
-
-export const MAP_PRESETS = [
-  {
-    id: 'plus-lane',
-    name: '(4) Plus-Lane',
-    playersCount: 4,
-    size: '14x14 Salib',
-    boardSize: 14,
-    isCross: true,
-    desc: 'Papan salib klasik 4 pemain.'
+    zone: 'Timur'
   },
   {
-    id: 'default-lane',
-    name: '(2) Default-Lane (1 vs 1)',
-    playersCount: 2,
-    size: '8x8 Normal',
-    boardSize: 8,
-    isCross: false,
-    desc: 'Papan normal 8x8 standar 1 vs 1 tanpa tanda plus.'
+    id: 4,
+    name: 'Hitam (P5)',
+    color: '#334155',
+    bgPastel: '#e2e8f0',
+    borderPastel: '#94a3b8',
+    textPastel: '#0f172a',
+    zone: 'Benteng Pusat'
   }
 ];
 
@@ -102,7 +150,8 @@ export const DIRECTIONS_4P = [
   [-1, 0], // Red: Up
   [0, 1],  // Blue: Right
   [1, 0],  // Yellow: Down
-  [0, -1]  // Green: Left
+  [0, -1], // Green: Left
+  [-1, 0]  // P5: Up/Flexible
 ];
 
 export const DIFFICULTY_LABELS = {
@@ -120,8 +169,8 @@ export const RATING_BADGES = {
 
 export function isValidCell(r, c, boardSize = 14) {
   if (r < 0 || c < 0 || r >= boardSize || c >= boardSize) return false;
-  if (boardSize === 8) return true; // Normal 8x8: all squares valid
-  return !((r < 3 || r > 10) && (c < 3 || c > 10)); // 14x14 cross
+  if (boardSize !== 14) return true;
+  return !((r < 3 || r > 10) && (c < 3 || c > 10));
 }
 
 export function toAlgebraic(r, c, boardSize = 14) {
@@ -132,68 +181,56 @@ export class ChessModel {
   constructor(options = {}) {
     this.mode = options.mode || 'team';
     this.lone = options.lone !== undefined ? options.lone : 0;
-    this.slots = options.slots ? [...options.slots] : ['human', 'easy', 'easy', 'easy'];
+    this.slots = options.slots ? [...options.slots] : ['human', 'easy', 'easy', 'easy', 'hard'];
     this.mapId = options.mapId || 'plus-lane';
-    this.boardSize = this.mapId === 'default-lane' ? 8 : 14;
+    this.mapData = getMapById(this.mapId);
+    this.boardSize = this.mapData.boardSize || 14;
     this.players = options.players ? options.players.map(p => ({ ...p })) : PLAYERS.map(p => ({ ...p }));
     this.reset();
   }
 
   reset() {
-    this.boardSize = this.mapId === 'default-lane' ? 8 : 14;
+    this.mapData = getMapById(this.mapId);
+    this.boardSize = this.mapData.boardSize || 14;
     const N = this.boardSize;
     this.board = Array.from({ length: N }, () => Array(N).fill(null));
 
+    const totalP = this.mapData.playersCount || 4;
+    this.alive = Array.from({ length: 5 }, (_, i) => i < totalP);
+
     if (this.mapId === 'default-lane') {
-      // 1 VS 1 NORMAL 8x8
-      this.team = [0, 1, 1, 1];
-      this.alive = [true, true, false, false];
-
-      // Player 0 (Bottom): rows 6 and 7
-      for (let i = 0; i < 8; i++) {
-        this.board[7][i] = { p: 0, t: BACK_RANK_ORDER[i] };
-        this.board[6][i] = { p: 0, t: 'P' };
-      }
-
-      // Player 1 (Top): rows 0 and 1
-      for (let i = 0; i < 8; i++) {
-        this.board[0][i] = { p: 1, t: BACK_RANK_ORDER[i] };
-        this.board[1][i] = { p: 1, t: 'P' };
+      this.team = [0, 1, 1, 1, 1];
+    } else if (this.mapId === 'double-last-line-defence') {
+      if (this.mode === 'ffa') {
+        this.team = [0, 1, 2, 3, 4];
+      } else {
+        // 4 vs 1: Koalisi 4 pemain (indeks 0-3) vs Player 5 (indeks 4)
+        this.team = [0, 0, 0, 0, 1];
       }
     } else {
-      // 4 PLAYER CROSS 14x14
       if (this.mode === 'team') {
-        this.team = [0, 1, 0, 1];
+        this.team = [0, 1, 0, 1, 2];
       } else if (this.mode === 'ffa') {
-        this.team = [0, 1, 2, 3];
+        this.team = [0, 1, 2, 3, 4];
       } else {
-        this.team = [0, 1, 2, 3].map(i => (i === this.lone ? 0 : 1));
+        this.team = [0, 1, 2, 3, 4].map(i => (i === this.lone ? 0 : 1));
       }
+    }
 
-      this.alive = [true, true, true, true];
-
-      for (let p = 0; p < 4; p++) {
-        for (let i = 0; i < 8; i++) {
-          const [r0, c0] = [
-            [13, 3 + i],
-            [3 + i, 0],
-            [0, 10 - i],
-            [10 - i, 13]
-          ][p];
-          this.board[r0][c0] = { p, t: BACK_RANK_ORDER[i] };
-
-          const [r1, c1] = [
-            [12, 3 + i],
-            [3 + i, 1],
-            [1, 10 - i],
-            [10 - i, 12]
-          ][p];
-          this.board[r1][c1] = { p, t: 'P' };
+    // Panggil inisialisasi bidak dari modul map
+    if (this.mapData.initPieces) {
+      this.mapData.initPieces(this.board, null, BACK_RANK_ORDER);
+    } else if (this.mapData.customPieces) {
+      // Custom map dari map editor
+      for (const item of this.mapData.customPieces) {
+        if (this.isValid(item.r, item.c)) {
+          this.board[item.r][item.c] = { p: item.p, t: item.t };
         }
       }
     }
 
     this.cur = 0;
+    this.p5TurnCount = 0;
     this.over = null;
     this.last = null;
     this.hist = [];
@@ -205,15 +242,17 @@ export class ChessModel {
   }
 
   isValid(r, c) {
-    return isValidCell(r, c, this.boardSize);
-  }
-
-  isPawnPromo(player, r) {
-    if (this.mapId === 'default-lane') {
-      return player === 0 ? r === 0 : r === 7;
+    if (r < 0 || c < 0 || r >= this.boardSize || c >= this.boardSize) return false;
+    if (this.mapData?.tiles) {
+      const tile = this.mapData.tiles[r]?.[c];
+      if (tile === 'void' || tile === 'omitted' || tile === 'wall' || tile === 'obstacle') {
+        return false;
+      }
+      if (tile === 'normal') {
+        return true;
+      }
     }
-    const rank = [13 - r, null, r, null][player];
-    return player === 0 ? r <= 6 : player === 1 ? r >= 7 : player === 2 ? r >= 7 : r <= 6;
+    return isValidCell(r, c, this.boardSize);
   }
 
   genMoves(board, p) {
@@ -238,7 +277,7 @@ export class ChessModel {
         };
 
         if (x.t === 'P') {
-          // Pawns
+          // Pawn moves
           if (this.mapId === 'default-lane') {
             const dir = p === 0 ? -1 : 1;
             const startRow = p === 0 ? 6 : 1;
@@ -259,26 +298,36 @@ export class ChessModel {
                 if (y && this.team[y.p] !== this.team[p]) add(a, d);
               }
             }
+          } else if (p === 4) {
+            // Player 5 (Fortress pawn): can attack in 4 diagonal directions or advance outwards
+            for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+              const a = r + dr, d = c + dc;
+              if (this.isValid(a, d) && !board[a][d]) add(a, d);
+            }
+            for (const [dr, dc] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+              const a = r + dr, d = c + dc;
+              if (this.isValid(a, d)) {
+                const y = board[a][d];
+                if (y && this.team[y.p] !== this.team[p]) add(a, d);
+              }
+            }
           } else {
-            // 14x14 Plus 4P
+            // Standard 4P Pawns
             const f = DIRECTIONS_4P[p];
-            const a = r + f[0];
-            const d = c + f[1];
+            const a = r + f[0], d = c + f[1];
 
             if (this.isValid(a, d) && !board[a][d]) {
               add(a, d);
-              const a2 = a + f[0];
-              const d2 = d + f[1];
-              const isStartRank = (p === 0 && r === 12) || (p === 1 && c === 1) || (p === 2 && r === 1) || (p === 3 && c === 12);
-              if (isStartRank && this.isValid(a2, d2) && !board[a2][d2]) {
+              const a2 = a + f[0], d2 = d + f[1];
+              const isStart = (p === 0 && r === 12) || (p === 1 && c === 1) || (p === 2 && r === 1) || (p === 3 && c === 12);
+              if (isStart && this.isValid(a2, d2) && !board[a2][d2]) {
                 add(a2, d2);
               }
             }
 
             const diagonals = f[0] ? [[0, 1], [0, -1]] : [[1, 0], [-1, 0]];
             for (const s of diagonals) {
-              const a3 = a + s[0];
-              const d3 = d + s[1];
+              const a3 = a + s[0], d3 = d + s[1];
               if (this.isValid(a3, d3)) {
                 const y = board[a3][d3];
                 if (y && this.team[y.p] !== this.team[p]) add(a3, d3);
@@ -298,9 +347,13 @@ export class ChessModel {
           const og = [[1, 0], [-1, 0], [0, 1], [0, -1]];
           const ds = x.t === 'B' ? dg : x.t === 'R' ? og : dg.concat(og);
 
+          const isDebuffed = (this.mapId === 'plus-lane' || this.mapId === 'double-last-line-defence') &&
+            (x.t === 'R' || x.t === 'B' || x.t === 'Q');
+          const maxDist = x.t === 'K' ? 1 : (isDebuffed ? 8 : 99);
+
           for (const [a, d] of ds) {
             let i = 1;
-            while (tr(r + a * i, c + d * i)) {
+            while (i <= maxDist && tr(r + a * i, c + d * i)) {
               if (x.t === 'K') break;
               i++;
             }
@@ -338,7 +391,7 @@ export class ChessModel {
   }
 
   getFoes(player) {
-    const total = this.mapId === 'default-lane' ? 2 : 4;
+    const total = this.mapData.playersCount || 4;
     return Array.from({ length: total }, (_, i) => i).filter(i => this.alive[i] && this.team[i] !== this.team[player]);
   }
 
@@ -356,22 +409,25 @@ export class ChessModel {
     return s;
   }
 
-  getKingPos(board, player) {
+  getKingPositions(board, player) {
     const N = this.boardSize;
+    const kings = [];
     for (let r = 0; r < N; r++) {
       for (let c = 0; c < N; c++) {
         const x = board[r][c];
-        if (x && x.p === player && x.t === 'K') return [r, c];
+        if (x && x.p === player && x.t === 'K') kings.push([r, c]);
       }
     }
-    return null;
+    return kings;
   }
 
   isInCheck(board, player) {
-    const k = this.getKingPos(board, player);
-    if (!k) return false;
+    const kings = this.getKingPositions(board, player);
+    if (!kings.length) return false;
     const foes = this.getFoes(player);
-    return this.getAttacks(board, foes).has(k[0] * this.boardSize + k[1]);
+    const attacks = this.getAttacks(board, foes);
+    // Skak jika setidaknya salah satu raja diancam
+    return kings.some(k => attacks.has(k[0] * this.boardSize + k[1]));
   }
 
   getLegalMoves(board = this.board, player = this.cur) {
@@ -390,14 +446,15 @@ export class ChessModel {
   }
 
   checkWin() {
-    const active = (this.mapId === 'default-lane' ? [0, 1] : [0, 1, 2, 3]).filter(i => this.alive[i]);
+    const total = this.mapData.playersCount || 4;
+    const active = Array.from({ length: total }, (_, i) => i).filter(i => this.alive[i]);
     const activeTeams = new Set(active.map(i => this.team[i]));
 
     if (activeTeams.size === 0) {
       this.over = 'Seri';
     } else if (activeTeams.size === 1) {
       const winningTeam = [...activeTeams][0];
-      const winners = (this.mapId === 'default-lane' ? [0, 1] : [0, 1, 2, 3]).filter(i => this.team[i] === winningTeam);
+      const winners = Array.from({ length: total }, (_, i) => i).filter(i => this.team[i] === winningTeam);
       this.over = 'Pemenang: ' + winners.map(i => this.players[i].name).join(' & ');
     }
   }
@@ -412,11 +469,9 @@ export class ChessModel {
       return Math.random() < 0.4 && captures.length ? rnd(captures) : rnd(legalMoves);
     }
 
-    // Material greedy score
     const scores = legalMoves.map(m => {
       const target = this.board[m[2]][m[3]];
-      let score = target ? PIECE_VALUES[target.t] * 3 : 0;
-      return score;
+      return target ? PIECE_VALUES[target.t] * 3 : 0;
     });
 
     let best = -1e9;
@@ -441,34 +496,35 @@ export class ChessModel {
     const captured = this.makeMove(this.board, move);
     this.last = move;
 
+    // ATURAN KHUSUS RAJA:
+    // Jika bidak raja dimakan:
     if (captured && captured.t === 'K') {
-      this.eliminatePlayer(captured.p);
+      const remainingKings = this.getKingPositions(this.board, captured.p);
+      // Pemain 5 (atau yang punya dual king) kalah HANYA jika SEMUA rajanya sudah dimakan!
+      if (remainingKings.length === 0) {
+        this.eliminatePlayer(captured.p);
+      }
     }
 
-    const totalPlayers = this.mapId === 'default-lane' ? 2 : 4;
-    let loops = 0;
+    this.checkWin();
 
-    while (true) {
-      this.checkWin();
-      if (this.over) break;
+    // BUFF: Player 5 di Double-Last-Line Defence bisa 2 turn langsung
+    const isP5DoubleTurn = this.mapId === 'double-last-line-defence' && player === 4 && !this.over && this.alive[4];
 
-      this.cur = (this.cur + 1) % totalPlayers;
-      if (!this.alive[this.cur]) continue;
-
-      const nextMoves = this.getLegalMoves(this.board, this.cur);
-      if (nextMoves.length) break;
-
-      if (this.isInCheck(this.board, this.cur)) {
-        this.eliminatePlayer(this.cur);
+    if (isP5DoubleTurn && this.p5TurnCount === 0) {
+      const nextMovesP5 = this.getLegalMoves(this.board, 4);
+      if (nextMovesP5.length > 0) {
+        this.p5TurnCount = 1;
+        this.msg = 'Player 5: Aksi ke-2 (Buff 2x Turn)!';
       } else {
-        this.eliminatePlayer(this.cur);
+        this.p5TurnCount = 0;
+        this.msg = '';
+        this.advanceTurn();
       }
-
-      loops++;
-      if (loops > 10) {
-        this.over = 'Seri';
-        break;
-      }
+    } else {
+      this.p5TurnCount = 0;
+      this.msg = '';
+      this.advanceTurn();
     }
 
     const record = {
@@ -490,17 +546,47 @@ export class ChessModel {
     };
   }
 
+  advanceTurn() {
+    const totalPlayers = this.mapData.playersCount || 4;
+    let loops = 0;
+
+    while (true) {
+      this.checkWin();
+      if (this.over) break;
+
+      this.cur = (this.cur + 1) % totalPlayers;
+      if (!this.alive[this.cur]) continue;
+
+      const nextMoves = this.getLegalMoves(this.board, this.cur);
+      if (nextMoves.length) break;
+
+      // Jika tidak ada langkah legal, cek sisa raja
+      const kings = this.getKingPositions(this.board, this.cur);
+      if (kings.length <= 1) {
+        this.eliminatePlayer(this.cur);
+      }
+
+      loops++;
+      if (loops > 12) {
+        this.over = 'Seri';
+        break;
+      }
+    }
+  }
+
   getState() {
-    const totalPlayers = this.mapId === 'default-lane' ? 2 : 4;
-    const checks = Array.from({ length: 4 }, (_, i) => i < totalPlayers && this.alive[i] && this.isInCheck(this.board, i));
-    const inCheckNames = Array.from({ length: totalPlayers }, (_, i) => i).filter(i => checks[i]).map(i => this.players[i].name);
+    const totalPlayers = this.mapData.playersCount || 4;
+    const checks = Array.from({ length: 5 }, (_, i) => i < totalPlayers && !!this.alive[i] && this.isInCheck(this.board, i));
+    const inCheckNames = Array.from({ length: totalPlayers }, (_, i) => i)
+      .filter(i => checks[i])
+      .map(i => this.players?.[i]?.name || PLAYERS[i]?.name || `Pemain ${i + 1}`);
 
     return {
       mode: this.mode,
       mapId: this.mapId,
       boardSize: this.boardSize,
-      isCross: this.mapId === 'plus-lane',
       cur: this.cur,
+      p5TurnCount: this.p5TurnCount,
       players: this.players,
       curPlayer: this.players[this.cur],
       slots: this.slots,

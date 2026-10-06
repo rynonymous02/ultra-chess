@@ -225,3 +225,84 @@ select:focus {
   border: 2px solid var(--border-dark);
   border-radius: 4px;
 }
+
+/* Pilihan Skin Papan Catur */
+:root[data-board-skin="merah-putih"],
+html[data-board-skin="merah-putih"],
+body[data-board-skin="merah-putih"],
+[data-board-skin="merah-putih"] {
+  --sq-light: #fff1f2 !important;
+  --sq-dark: #e11d48 !important;
+  --sq-sel: #fde047 !important;
+  --sq-last: #fecdd3 !important;
+  --sq-check: #fb7185 !important;
+}
+
+:root[data-board-skin="hitam-putih"],
+html[data-board-skin="hitam-putih"],
+body[data-board-skin="hitam-putih"],
+[data-board-skin="hitam-putih"] {
+  --sq-light: #f8fafc !important;
+  --sq-dark: #1e293b !important;
+  --sq-sel: #facc15 !important;
+  --sq-last: #64748b !important;
+  --sq-check: #ef4444 !important;
+}
+
+:root[data-board-skin="biru-putih"],
+html[data-board-skin="biru-putih"],
+body[data-board-skin="biru-putih"],
+[data-board-skin="biru-putih"] {
+  --sq-light: #f0f9ff !important;
+  --sq-dark: #0284c7 !important;
+  --sq-sel: #38bdf8 !important;
+  --sq-last: #bae6fd !important;
+  --sq-check: #ef4444 !important;
+}
+
+:root[data-board-skin="hijau-putih"],
+html[data-board-skin="hijau-putih"],
+body[data-board-skin="hijau-putih"],
+[data-board-skin="hijau-putih"] {
+  --sq-light: #f0fdf4 !important;
+  --sq-dark: #15803d !important;
+  --sq-sel: #86efac !important;
+  --sq-last: #bbf7d0 !important;
+  --sq-check: #ef4444 !important;
+}
+
+:root[data-board-skin="klasik-kayu"],
+html[data-board-skin="klasik-kayu"],
+body[data-board-skin="klasik-kayu"],
+[data-board-skin="klasik-kayu"] {
+  --sq-light: #fef3c7 !important;
+  --sq-dark: #b45309 !important;
+  --sq-sel: #fde047 !important;
+  --sq-last: #fed7aa !important;
+  --sq-check: #ef4444 !important;
+}
+
+:root[data-board-skin="ungu-neon"],
+html[data-board-skin="ungu-neon"],
+body[data-board-skin="ungu-neon"],
+[data-board-skin="ungu-neon"] {
+  --sq-light: #faf5ff !important;
+  --sq-dark: #7e22ce !important;
+  --sq-sel: #c084fc !important;
+  --sq-last: #e9d5ff !important;
+  --sq-check: #ef4444 !important;
+}
+
+/* Petak Rintangan Tembok / Wall */
+.cell-wall {
+  background-color: #475569 !important;
+  box-shadow: inset 0 0 0 2px var(--border-dark);
+  cursor: not-allowed;
+  position: relative;
+}
+.cell-wall::after {
+  content: '🧱';
+  font-size: calc(var(--sq-size, 32px) * 0.52);
+  line-height: 1;
+}
+

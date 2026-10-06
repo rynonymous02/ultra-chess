@@ -3,13 +3,13 @@
     <!-- Active Turn Neo Card -->
     <div
       class="turn-card neo-card"
-      :style="{ backgroundColor: curPlayer.bgPastel, borderColor: 'var(--border-dark)' }"
+      :style="{ backgroundColor: playerBg, borderColor: 'var(--border-dark)' }"
     >
       <div class="turn-main">
-        <span class="player-dot" :style="{ backgroundColor: curPlayer.color }"></span>
+        <span class="player-dot" :style="{ backgroundColor: playerColor }"></span>
         <div class="turn-text">
           <span class="turn-label">Giliran:</span>
-          <span class="player-title" :style="{ color: curPlayer.textPastel }">{{ curPlayer.name }}</span>
+          <span class="player-title" :style="{ color: playerTextColor }">{{ playerName }}</span>
           <span class="player-tag">({{ slotLabel }})</span>
         </div>
       </div>
@@ -22,7 +22,7 @@
     </div>
 
     <!-- Check Warning Alert -->
-    <div v-if="inCheckNames.length > 0 && !gameOver" class="alert-banner alert-check">
+    <div v-if="inCheckNames && inCheckNames.length > 0 && !gameOver" class="alert-banner alert-check">
       <span class="alert-icon">⚠️</span>
       <div class="alert-msg">
         <strong>SKAK:</strong> {{ inCheckNames.join(', ') }}
@@ -64,7 +64,7 @@ import { DIFFICULTY_LABELS } from '../models/ChessModel.js';
 const props = defineProps({
   curPlayer: {
     type: Object,
-    required: true
+    default: () => ({})
   },
   curSlot: {
     type: String,
@@ -90,10 +90,14 @@ const props = defineProps({
 
 defineEmits(['restart-game', 'open-menu']);
 
-const slotLabel = computed(() => DIFFICULTY_LABELS[props.curSlot] || props.curSlot);
+const playerName = computed(() => props.curPlayer?.name || 'Pemain');
+const playerBg = computed(() => props.curPlayer?.bgPastel || '#ffffff');
+const playerColor = computed(() => props.curPlayer?.color || '#334155');
+const playerTextColor = computed(() => props.curPlayer?.textPastel || 'inherit');
+const slotLabel = computed(() => DIFFICULTY_LABELS[props.curSlot] || props.curSlot || 'Human');
 
 const isCurrentPlayerInCheck = computed(() => {
-  return props.inCheckNames.includes(props.curPlayer.name);
+  return (props.inCheckNames || []).includes(playerName.value);
 });
 
 watch(

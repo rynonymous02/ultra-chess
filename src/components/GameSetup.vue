@@ -9,30 +9,14 @@
       <label class="section-label">Mode Permainan</label>
       <div class="mode-grid">
         <button
+          v-for="m in availableModes"
+          :key="m.id"
           type="button"
-          :class="['mode-card', { active: currentMode === 'team' }]"
-          @click="selectMode('team')"
+          :class="['mode-card', { active: currentMode === m.id }]"
+          @click="selectMode(m.id)"
         >
-          <span class="mode-name">Tim A vs Tim B</span>
-          <span class="mode-desc">2 vs 2</span>
-        </button>
-
-        <button
-          type="button"
-          :class="['mode-card', { active: currentMode === 'ffa' }]"
-          @click="selectMode('ffa')"
-        >
-          <span class="mode-name">Free For All</span>
-          <span class="mode-desc">Semua Musuh</span>
-        </button>
-
-        <button
-          type="button"
-          :class="['mode-card', { active: currentMode === 'solo' }]"
-          @click="selectMode('solo')"
-        >
-          <span class="mode-name">3 vs 1</span>
-          <span class="mode-desc">Solo</span>
+          <span class="mode-name">{{ m.name }}</span>
+          <span class="mode-desc">{{ m.desc }}</span>
         </button>
       </div>
     </div>
@@ -53,7 +37,7 @@
 
       <div class="player-slot-list">
         <div
-          v-for="player in playerList"
+          v-for="player in visiblePlayers"
           :key="player.id"
           class="slot-item neo-card"
           :style="{ backgroundColor: player.bgPastel, borderColor: 'var(--border-dark)' }"
@@ -67,7 +51,7 @@
             </div>
           </div>
 
-          <!-- Posisi / Lokasi (1, 2, 3, 4) -->
+          <!-- Posisi / Lokasi -->
           <div class="col-spawn">
             <label class="cell-label" :for="'spawn-' + player.id">Lokasi</label>
             <select
@@ -76,10 +60,7 @@
               @change="handleSpawnChange(player.id, Number($event.target.value))"
               class="spawn-select"
             >
-              <option :value="1">1</option>
-              <option :value="2">2</option>
-              <option :value="3">3</option>
-              <option :value="4">4</option>
+              <option v-for="sp in availableSpawns" :key="sp" :value="sp">{{ sp }}</option>
             </select>
           </div>
 
@@ -139,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { COLOR_PRESETS } from '../models/ChessModel.js';
 
 const props = defineProps({
@@ -153,11 +134,15 @@ const props = defineProps({
   },
   initialSlots: {
     type: Array,
-    default: () => ['human', 'easy', 'easy', 'easy']
+    default: () => ['human', 'easy', 'easy', 'easy', 'hard']
   },
   players: {
     type: Array,
     required: true
+  },
+  currentMap: {
+    type: String,
+    default: 'plus-lane'
   }
 });
 
@@ -169,6 +154,63 @@ const currentLone = ref(props.lone);
 const slots = ref([...props.initialSlots]);
 const playerList = ref(props.players.map(p => ({ ...p })));
 const activeColorPickerId = ref(null);
+
+const availableModes = computed(() => {
+  if (props.currentMap === 'double-last-line-defence') {
+    return [
+      { id: '4v1', name: '4 vs 1 (Player 5)', desc: 'Koalisi vs Player 5' },
+      { id: 'ffa', name: 'Free For All', desc: '5 Pemain Bebas' }
+    ];
+  }
+  if (props.currentMap === 'default-lane') {
+    return [
+      { id: 'duel', name: '1 vs 1 (Duel)', desc: 'Duel Standar' }
+    ];
+  }
+  return [
+    { id: 'team', name: 'Tim A vs Tim B', desc: '2 vs 2 Aliansi' },
+    { id: 'ffa', name: 'Free For All', desc: 'Semua Musuh' },
+    { id: 'solo', name: '3 vs 1', desc: 'Solo Defender' }
+  ];
+});
+
+const availableSpawns = computed(() => {
+  if (props.currentMap === 'double-last-line-defence') {
+    return [1, 2, 3, 4, 5];
+  }
+  if (props.currentMap === 'default-lane') {
+    return [1, 2];
+  }
+  return [1, 2, 3, 4];
+});
+
+const visiblePlayers = computed(() => {
+  if (props.currentMap === 'default-lane') {
+    return playerList.value.slice(0, 2);
+  }
+  if (props.currentMap === 'double-last-line-defence') {
+    return playerList.value.slice(0, 5);
+  }
+  return playerList.value.slice(0, 4);
+});
+
+watch(
+  () => props.currentMap,
+  () => {
+    const validModes = availableModes.value.map(m => m.id);
+    if (!validModes.includes(currentMode.value)) {
+      selectMode(validModes[0]);
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => props.mode,
+  (newMode) => {
+    currentMode.value = newMode;
+  }
+);
 
 watch(
   () => props.players,
@@ -188,10 +230,18 @@ watch(currentLone, (newVal) => {
 });
 
 function getTeamLabel(playerId) {
+  if (props.currentMap === 'double-last-line-defence') {
+    if (currentMode.value === '4v1') {
+      return playerId === 4 ? 'Solo Benteng' : 'Koalisi 4';
+    }
+    return 'FFA';
+  }
   if (currentMode.value === 'team') {
     return playerId % 2 === 0 ? 'Tim A' : 'Tim B';
   } else if (currentMode.value === 'solo') {
     return playerId === currentLone.value ? 'Solo' : 'Koalisi';
+  } else if (currentMode.value === 'duel') {
+    return playerId === 0 ? 'Putih' : 'Hitam';
   }
   return 'FFA';
 }

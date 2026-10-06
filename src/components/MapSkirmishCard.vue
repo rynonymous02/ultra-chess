@@ -2,17 +2,45 @@
   <div class="map-skirmish-card neo-card">
     <div class="card-header">
       <h3 class="card-title">Map Catur</h3>
+      <div class="header-actions">
+        <button
+          type="button"
+          class="import-trigger-btn"
+          @click="triggerImport"
+          title="Import file map (.js / .json)"
+        >
+          <span>📁 Import Map</span>
+        </button>
+        <button
+          type="button"
+          class="editor-trigger-btn btn-primary"
+          @click="$emit('open-editor')"
+        >
+          <span>+ Map Editor</span>
+        </button>
+      </div>
+      <input
+        ref="fileInputRef"
+        type="file"
+        accept=".js,.json"
+        multiple
+        style="display: none"
+        @change="handleFileImport"
+      />
     </div>
 
     <!-- Mini Visual Chess Board Preview -->
-    <div class="board-preview-container neo-card">
+    <div
+      class="board-preview-container neo-card"
+      :data-board-skin="skin"
+      :style="{
+        '--sq-light': currentSkinVars.light,
+        '--sq-dark': currentSkinVars.dark
+      }"
+    >
       <!-- 8x8 Standard Board (1 vs 1) -->
       <template v-if="currentMap === 'default-lane'">
-        <div
-          class="mini-grid grid-8x8"
-          role="img"
-          aria-label="Preview Papan Catur 8x8"
-        >
+        <div class="mini-grid grid-8x8" role="img" aria-label="Preview Papan Catur 8x8">
           <template v-for="r in 8" :key="'pr8_' + (r - 1)">
             <div
               v-for="c in 8"
@@ -30,7 +58,6 @@
           </template>
         </div>
 
-        <!-- 2 Spawn Beacons for 1v1 -->
         <div
           class="spawn-beacon beacon-top-8"
           :style="{ backgroundColor: getSpawnPlayer(2)?.color || '#0ea5e9' }"
@@ -45,13 +72,9 @@
         </div>
       </template>
 
-      <!-- 14x14 Plus-Lane Board (4P) -->
+      <!-- 14x14 Board (Plus-Lane & Double-Last-Line Defence) -->
       <template v-else>
-        <div
-          class="mini-grid grid-14x14"
-          role="img"
-          aria-label="Preview Papan Catur 14x14"
-        >
+        <div class="mini-grid grid-14x14" role="img" aria-label="Preview Papan Catur 14x14">
           <template v-for="r in 14" :key="'pr14_' + (r - 1)">
             <div
               v-for="c in 14"
@@ -69,7 +92,7 @@
           </template>
         </div>
 
-        <!-- 4 Spawn Beacons for 4P -->
+        <!-- 4 Outer Spawn Beacons -->
         <div
           class="spawn-beacon beacon-north"
           :style="{ backgroundColor: getSpawnPlayer(3)?.color || '#eab308' }"
@@ -94,7 +117,55 @@
         >
           <span>1</span>
         </div>
+
+        <!-- Center Beacon for Player 5 (Double-Last-Line Defence) -->
+        <div
+          v-if="currentMap === 'double-last-line-defence'"
+          class="spawn-beacon beacon-center"
+          :style="{ backgroundColor: getSpawnPlayer(5)?.color || '#334155' }"
+          title="Player 5: Benteng Pusat"
+        >
+          <span>5</span>
+        </div>
       </template>
+    </div>
+
+    <!-- Dropdown Skin Papan Catur -->
+    <div class="skin-dropdown-section" ref="dropdownRef">
+      <div class="section-label">Skin Papan</div>
+      <div class="skin-dropdown-wrapper">
+        <button
+          type="button"
+          class="skin-dropdown-trigger"
+          @click="toggleSkinDropdown"
+          :aria-expanded="isSkinDropdownOpen"
+        >
+          <div class="trigger-label">
+            <span
+              class="skin-preview-dot"
+              :style="{ background: `linear-gradient(135deg, ${currentSkinObj.color1} 50%, ${currentSkinObj.color2} 50%)` }"
+            ></span>
+            <span>{{ currentSkinObj.name }}</span>
+          </div>
+          <span class="chevron-arrow" :class="{ open: isSkinDropdownOpen }">▾</span>
+        </button>
+
+        <div v-if="isSkinDropdownOpen" class="skin-dropdown-menu">
+          <button
+            v-for="s in skinOptions"
+            :key="s.id"
+            type="button"
+            :class="['skin-menu-item', { active: skin === s.id }]"
+            @click.stop="selectSkin(s.id)"
+          >
+            <span
+              class="skin-preview-dot"
+              :style="{ background: `linear-gradient(135deg, ${s.color1} 50%, ${s.color2} 50%)` }"
+            ></span>
+            <span>{{ s.name }}</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Map List Section -->
@@ -103,7 +174,7 @@
 
       <div class="map-buttons-list">
         <button
-          v-for="preset in mapPresets"
+          v-for="preset in allMaps"
           :key="preset.id"
           type="button"
           :class="['map-item-btn', { active: currentMap === preset.id }]"
@@ -117,13 +188,15 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
   isValidCell,
   BACK_RANK_ORDER,
   PIECE_SYMBOLS,
-  MAP_PRESETS
+  PLAYERS,
+  BOARD_SKINS
 } from '../models/ChessModel.js';
+import { getAllMaps, getMapById, saveMultipleCustomMaps } from '../maps/index.js';
 
 const props = defineProps({
   currentMap: {
@@ -133,26 +206,152 @@ const props = defineProps({
   players: {
     type: Array,
     required: true
+  },
+  skin: {
+    type: String,
+    default: 'merah-putih'
   }
 });
 
-const emit = defineEmits(['update:map']);
+const emit = defineEmits(['update:map', 'update:skin', 'open-editor']);
 
-const mapPresets = MAP_PRESETS;
+const skinOptions = computed(() => {
+  return Object.entries(BOARD_SKINS).map(([id, val]) => ({ id, ...val }));
+});
+
+const currentSkinVars = computed(() => {
+  return (BOARD_SKINS && BOARD_SKINS[props.skin]) || BOARD_SKINS['merah-putih'];
+});
+
+const currentSkinObj = computed(() => {
+  return skinOptions.value.find(s => s.id === props.skin) || skinOptions.value[0];
+});
+
+const isSkinDropdownOpen = ref(false);
+const dropdownRef = ref(null);
+const fileInputRef = ref(null);
+const mapsVersion = ref(0);
+
+const allMaps = computed(() => {
+  // Dependency reaktif agar list map langsung diperbarui saat import/save
+  mapsVersion.value;
+  return getAllMaps();
+});
+
+function toggleSkinDropdown() {
+  isSkinDropdownOpen.value = !isSkinDropdownOpen.value;
+}
+
+function selectSkin(id) {
+  emit('update:skin', id);
+  isSkinDropdownOpen.value = false;
+}
+
+function handleClickOutside(e) {
+  if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
+    isSkinDropdownOpen.value = false;
+  }
+}
+
+function triggerImport() {
+  if (fileInputRef.value) {
+    fileInputRef.value.click();
+  }
+}
+
+async function handleFileImport(event) {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+
+  const importedMaps = [];
+  for (const file of files) {
+    try {
+      const text = await file.text();
+      const mapObj = parseMapFile(text, file.name);
+      if (mapObj) {
+        importedMaps.push(mapObj);
+      }
+    } catch (err) {
+      console.error('Gagal membaca file map:', file.name, err);
+    }
+  }
+
+  if (importedMaps.length > 0) {
+    saveMultipleCustomMaps(importedMaps);
+    mapsVersion.value++;
+    // Pilih map terakhir yang berhasil di-import
+    const lastMap = importedMaps[importedMaps.length - 1];
+    emit('update:map', lastMap.id);
+  }
+
+  event.target.value = '';
+}
+
+function parseMapFile(text, filename) {
+  // 1. Coba JSON murni
+  try {
+    const data = JSON.parse(text);
+    if (data && typeof data === 'object') {
+      return normalizeMapData(data, filename);
+    }
+  } catch (e) {}
+
+  // 2. Coba JS export object
+  try {
+    const match = text.match(/export\s+const\s+\w+\s*=\s*(\{[\s\S]*\});?\s*$/m) || text.match(/(\{[\s\S]*\})/);
+    if (match) {
+      const parsed = new Function(`return (${match[1]});`)();
+      if (parsed && typeof parsed === 'object') {
+        return normalizeMapData(parsed, filename);
+      }
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+function normalizeMapData(data, filename) {
+  const fallbackId = (filename || 'custom-map').replace(/\.[^/.]+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const id = data.id || fallbackId || ('custom-' + Date.now());
+  const name = data.name || (filename ? filename.replace(/\.[^/.]+$/, '') : 'Map Kustom');
+  const boardSize = Number(data.boardSize) || 14;
+  const playersCount = Number(data.playersCount) || (boardSize === 8 ? 2 : 4);
+
+  return {
+    id,
+    name,
+    playersCount,
+    boardSize,
+    isCross: data.isCross !== undefined ? !!data.isCross : boardSize === 14,
+    desc: data.desc || 'Map kustom hasil import.',
+    activeSpawns: Array.isArray(data.activeSpawns) ? data.activeSpawns : Array.from({ length: playersCount }, (_, i) => i + 1),
+    customPieces: Array.isArray(data.customPieces) ? data.customPieces : [],
+    tiles: Array.isArray(data.tiles) ? data.tiles : null,
+    ...(data.hasDualKing ? { hasDualKing: true } : {})
+  };
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 
 function selectMap(id) {
   emit('update:map', id);
 }
 
 function getSpawnPlayer(spawnNum) {
-  return props.players.find(p => p.spawn === spawnNum) || props.players[spawnNum - 1];
+  return props.players.find(p => p.spawn === spawnNum) || props.players[spawnNum - 1] || PLAYERS[spawnNum - 1];
 }
 
 function getPieceSymbol(t) {
   return PIECE_SYMBOLS[t] || '';
 }
 
-// 8x8 Board pieces
+// 8x8 Board Preview
 const board8x8 = computed(() => {
   const b = Array.from({ length: 8 }, () => Array(8).fill(null));
   const p1Color = getSpawnPlayer(1)?.color || '#f43f5e';
@@ -171,37 +370,40 @@ function getPiece8x8(r, c) {
   return board8x8.value[r]?.[c] || null;
 }
 
-// 14x14 Board pieces
+// 14x14 Board Preview
 const board14x14 = computed(() => {
   const b = Array.from({ length: 14 }, () => Array(14).fill(null));
+  const currentMapObj = getMapById(props.currentMap);
 
-  for (let spawnIdx = 0; spawnIdx < 4; spawnIdx++) {
-    const player = getSpawnPlayer(spawnIdx + 1);
-    const pColor = player?.color || '#f43f5e';
-
-    for (let i = 0; i < 8; i++) {
-      const [r0, c0] = [
-        [13, 3 + i],
-        [3 + i, 0],
-        [0, 10 - i],
-        [10 - i, 13]
-      ][spawnIdx];
-      b[r0][c0] = { t: BACK_RANK_ORDER[i], color: pColor };
-
-      const [r1, c1] = [
-        [12, 3 + i],
-        [3 + i, 1],
-        [1, 10 - i],
-        [10 - i, 12]
-      ][spawnIdx];
-      b[r1][c1] = { t: 'P', color: pColor };
+  if (currentMapObj.initPieces) {
+    currentMapObj.initPieces(b, null, BACK_RANK_ORDER);
+    // Tint pieces with player colors
+    for (let r = 0; r < 14; r++) {
+      for (let c = 0; c < 14; c++) {
+        if (b[r][c]) {
+          const pl = getSpawnPlayer(b[r][c].p + 1);
+          b[r][c].color = pl?.color || '#ffffff';
+        }
+      }
+    }
+  } else if (currentMapObj.customPieces) {
+    for (const item of currentMapObj.customPieces) {
+      const pl = getSpawnPlayer(item.p + 1);
+      b[item.r][item.c] = { t: item.t, color: pl?.color || '#ffffff' };
     }
   }
   return b;
 });
 
 function getCellClass14(r, c) {
-  if (!isValidCell(r, c, 14)) return 'mini-cell omitted';
+  const currentMapObj = getMapById(props.currentMap);
+  if (currentMapObj.tiles) {
+    const tile = currentMapObj.tiles[r]?.[c];
+    if (tile === 'void' || tile === 'omitted') return 'mini-cell omitted';
+    if (tile === 'wall' || tile === 'obstacle') return 'mini-cell wall';
+  } else if (!isValidCell(r, c, 14)) {
+    return 'mini-cell omitted';
+  }
   const isDark = (r + c) % 2 !== 0;
   return ['mini-cell', isDark ? 'dark' : 'light'];
 }
@@ -224,14 +426,45 @@ function getPiece14(r, c) {
 }
 
 .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   border-bottom: 2px solid var(--border-dark);
   padding-bottom: 8px;
+  gap: 8px;
 }
 
 .card-title {
   font-size: 18px;
   font-weight: 800;
   line-height: 1;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.import-trigger-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  background: var(--card-alt);
+  color: var(--text-main);
+  border: var(--border-thick);
+  transition: all 0.12s ease;
+}
+
+.import-trigger-btn:hover {
+  background: var(--pastel-yellow);
+}
+
+.editor-trigger-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: var(--radius-sm);
 }
 
 /* Board Preview */
@@ -283,11 +516,22 @@ function getPiece14(r, c) {
 }
 
 .mini-cell.light {
-  background: #fef9c3;
+  background: var(--sq-light);
 }
 
 .mini-cell.dark {
-  background: #cbd5e1;
+  background: var(--sq-dark);
+}
+
+.mini-cell.wall {
+  background: #475569;
+  position: relative;
+}
+
+.mini-cell.wall::after {
+  content: '🧱';
+  font-size: 8px;
+  line-height: 1;
 }
 
 .mini-piece {
@@ -316,7 +560,6 @@ function getPiece14(r, c) {
   z-index: 10;
 }
 
-/* 8x8 Beacons */
 .beacon-top-8 {
   top: 14px;
   left: 50%;
@@ -329,7 +572,6 @@ function getPiece14(r, c) {
   transform: translateX(-50%);
 }
 
-/* 14x14 Beacons */
 .beacon-north {
   top: 14px;
   left: 50%;
@@ -352,6 +594,16 @@ function getPiece14(r, c) {
   right: 14px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+.beacon-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+  border-width: 2.5px;
 }
 
 /* Map List */
@@ -398,5 +650,115 @@ function getPiece14(r, c) {
   font-size: 13px;
   font-weight: 800;
   color: #1e293b;
+}
+
+/* Skin Dropdown Controls (Styled like Screenshot) */
+.skin-dropdown-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skin-dropdown-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.skin-dropdown-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--card-bg);
+  border: var(--border-thick);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.skin-dropdown-trigger:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px var(--shadow-color);
+}
+
+.trigger-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.chevron-arrow {
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.chevron-arrow.open {
+  transform: rotate(180deg);
+}
+
+.skin-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--card-bg);
+  border: var(--border-thick);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  z-index: 100;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.skin-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  box-shadow: none;
+  justify-content: flex-start;
+  transition: all 0.1s ease;
+}
+
+.skin-menu-item:hover:not(.active) {
+  background: var(--card-alt);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Selected item styling: Vibrant Blue background & crisp white text (as in screenshot) */
+.skin-menu-item.active {
+  background: #1971c2 !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  transform: none;
+  box-shadow: none;
+}
+
+.skin-preview-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-dark);
+  flex-shrink: 0;
 }
 </style>
