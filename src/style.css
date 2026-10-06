@@ -1,0 +1,227 @@
+/* SOFT NEO-BRUTALISM DESIGN SYSTEM */
+:root {
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Light Theme (Default for Warm Soft Neo-Brutalism) */
+  --bg-page: #fbf9f4;
+  --bg-pattern-dot: #cbd5e1;
+  --card-bg: #ffffff;
+  --card-alt: #f8fafc;
+  --border-dark: #1e293b;
+  --border-thick: 2.5px solid var(--border-dark);
+  --shadow-color: #1e293b;
+  --shadow-sm: 2px 2px 0px var(--shadow-color);
+  --shadow-md: 4px 4px 0px var(--shadow-color);
+  --shadow-lg: 6px 6px 0px var(--shadow-color);
+  --shadow-hover: 5px 5px 0px var(--shadow-color);
+  --shadow-active: 1px 1px 0px var(--shadow-color);
+
+  /* Text Colors */
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+
+  /* Soft Pastel Palette */
+  --pastel-yellow: #fef08a;
+  --pastel-yellow-deep: #eab308;
+  --pastel-blue: #bae6fd;
+  --pastel-blue-deep: #0284c7;
+  --pastel-rose: #fecdd3;
+  --pastel-rose-deep: #e11d48;
+  --pastel-green: #bbf7d0;
+  --pastel-green-deep: #16a34a;
+  --pastel-purple: #ddd6fe;
+  --pastel-purple-deep: #7c3aed;
+  --pastel-orange: #fed7aa;
+
+  /* 4-Player Colors */
+  --p-red: #f43f5e;
+  --p-blue: #0284c7;
+  --p-yellow: #d97706;
+  --p-green: #15803d;
+
+  /* Chess Board (Soft Neo-Brutalist) */
+  --sq-light: #fef9c3;
+  --sq-dark: #cbd5e1;
+  --sq-sel: #fde047;
+  --sq-last: #fed7aa;
+  --sq-check: #fda4af;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
+}
+
+/* Dark Mode: Cyber Soft Neo-Brutalism */
+[data-theme="dark"] {
+  --bg-page: #0f172a;
+  --bg-pattern-dot: #334155;
+  --card-bg: #1e293b;
+  --card-alt: #242f44;
+  --border-dark: #020617;
+  --shadow-color: #020617;
+  --shadow-sm: 2px 2px 0px var(--shadow-color);
+  --shadow-md: 4px 4px 0px var(--shadow-color);
+  --shadow-lg: 6px 6px 0px var(--shadow-color);
+  --shadow-hover: 5px 5px 0px var(--shadow-color);
+  --shadow-active: 1px 1px 0px var(--shadow-color);
+
+  --text-main: #f8fafc;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
+
+  --sq-light: #334155;
+  --sq-dark: #1e293b;
+  --sq-sel: #ca8a04;
+  --sq-last: rgba(217, 119, 6, 0.45);
+  --sq-check: #be123c;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  min-height: 100vh;
+  line-height: 1.5;
+  background-image: radial-gradient(var(--bg-pattern-dot) 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Neo-Brutalist Soft Card */
+.neo-card {
+  background: var(--card-bg);
+  border: var(--border-thick);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.neo-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* Neo-Brutalist Interactive Buttons */
+button {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--card-bg);
+  color: var(--text-main);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.12s cubic-bezier(0.3, 0, 0.2, 1);
+  user-select: none;
+}
+
+button:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px var(--shadow-color);
+}
+
+button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px var(--shadow-color);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+button.btn-primary {
+  background: var(--pastel-yellow);
+  color: #1e293b;
+}
+
+button.btn-primary:hover:not(:disabled) {
+  background: #fde047;
+}
+
+button.btn-purple {
+  background: var(--pastel-purple);
+  color: #1e293b;
+}
+
+button.btn-blue {
+  background: var(--pastel-blue);
+  color: #1e293b;
+}
+
+button.btn-green {
+  background: var(--pastel-green);
+  color: #1e293b;
+}
+
+button.btn-rose {
+  background: var(--pastel-rose);
+  color: #1e293b;
+}
+
+/* Neo-Brutalist Sticker / Badge */
+.neo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: var(--border-thick);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Select Control */
+select {
+  font-family: inherit;
+  font-weight: 600;
+  background: var(--card-bg);
+  color: var(--text-main);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  box-shadow: var(--shadow-sm);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+select:focus {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px var(--shadow-color);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+  border-left: 2px solid var(--border-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--pastel-yellow-deep);
+  border: 2px solid var(--border-dark);
+  border-radius: 4px;
+}
