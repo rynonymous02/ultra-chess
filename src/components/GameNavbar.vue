@@ -18,6 +18,14 @@
       </button>
 
       <button
+        class="online-nav-btn"
+        @click="$emit('open-online')"
+        title="Mode Online Multiplayer (Supabase)"
+      >
+        <span>🌐 Online</span>
+      </button>
+
+      <button
         class="icon-btn"
         @click="$emit('toggle-sound')"
         :title="soundEnabled ? 'Matikan Suara' : 'Nyalakan Suara'"
@@ -56,7 +64,7 @@ defineProps({
   }
 });
 
-defineEmits(['toggle-theme', 'toggle-sound', 'open-menu']);
+defineEmits(['toggle-theme', 'toggle-sound', 'open-menu', 'open-online']);
 </script>
 
 <style scoped>
@@ -119,5 +127,25 @@ defineEmits(['toggle-theme', 'toggle-sound', 'open-menu']);
   font-weight: 800;
   background: var(--pastel-yellow);
   color: #1e293b;
+}
+
+.online-nav-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  background: var(--pastel-green);
+  color: #14532d;
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  box-shadow: 2px 2px 0px var(--shadow-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.online-nav-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px var(--shadow-color);
 }
 </style>

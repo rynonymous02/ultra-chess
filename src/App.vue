@@ -9,6 +9,7 @@
         @toggle-theme="toggleTheme"
         @toggle-sound="toggleSound"
         @open-menu="goToMenu"
+        @open-online="isOnlineModalOpen = true"
       />
 
       <!-- Setup View: 2 Kolom (Menu & Map Skirmish) -->
@@ -41,6 +42,24 @@
 
       <!-- In-Game View: 1 Kolom Terpusat (Hanya muncul saat game) -->
       <main v-if="currentScreen === 'game'" class="game-layout">
+        <!-- Status Mode Online (Supabase Realtime) -->
+        <div v-if="isOnlineGame" class="online-indicator neo-card">
+          <div class="online-pill">
+            <span class="live-dot"></span>
+            <span>Room: <strong>{{ currentOnlineRoom }}</strong></span>
+          </div>
+          <div v-if="myOnlinePlayer" class="online-pill">
+            <span>Anda:</span>
+            <strong :style="{ color: myOnlinePlayer.color }">{{ myOnlinePlayer.name }}</strong>
+            <span
+              class="turn-tag"
+              :class="{ 'is-turn': controllerState.cur === myOnlineSlot }"
+            >
+              {{ controllerState.cur === myOnlineSlot ? 'Giliran Anda' : 'Menunggu Lawan' }}
+            </span>
+          </div>
+        </div>
+
         <!-- Status Giliran & Alert Skak -->
         <StatusBanner
           :cur-player="curPlayer"
@@ -95,6 +114,16 @@
         @close="isEditorOpen = false"
         @map-saved="handleMapSaved"
       />
+
+      <!-- Online PvP Modal (Supabase) -->
+      <OnlineRoomModal
+        v-if="isOnlineModalOpen"
+        :current-map="selectedMap"
+        :players="players"
+        :mode="gameConfig.mode"
+        @close="isOnlineModalOpen = false"
+        @start-online-game="handleStartOnlineGame"
+      />
     </div>
   </div>
 </template>
@@ -113,6 +142,8 @@ import MoveHistory from './components/MoveHistory.vue';
 import GameControls from './components/GameControls.vue';
 import { getMapById } from './maps/index.js';
 import MapEditor from './components/MapEditor.vue';
+import OnlineRoomModal from './components/OnlineRoomModal.vue';
+import { realtimeService } from './services/realtimeService.js';
 import { setSoundEnabled, isSoundEnabled } from './utils/sound.js';
 
 const currentScreen = ref('setup'); // 'setup' | 'game'
@@ -209,8 +240,37 @@ function handleMapChange(newMap) {
   }
 }
 
+const isOnlineModalOpen = ref(false);
+const isOnlineGame = ref(false);
+const currentOnlineRoom = ref('');
+const myOnlineSlot = ref(null);
+
+const myOnlinePlayer = computed(() => {
+  if (myOnlineSlot.value === null || myOnlineSlot.value === undefined) return null;
+  return controllerState.players?.[myOnlineSlot.value] || players.value[myOnlineSlot.value] || null;
+});
+
 function handleMapSaved(newMapId) {
   selectedMap.value = newMapId;
+}
+
+function handleStartOnlineGame(config) {
+  isOnlineGame.value = true;
+  currentOnlineRoom.value = realtimeService.room;
+  myOnlineSlot.value = realtimeService.mySlotIndex;
+  handleStartGame(config);
+}
+
+function handleRemoteMove({ move }) {
+  if (isOnlineGame.value) {
+    controller.executeMove(move);
+  }
+}
+
+function handleRemoteRestart() {
+  if (isOnlineGame.value) {
+    controller.restart();
+  }
 }
 
 function handleStartGame(config) {
@@ -238,19 +298,35 @@ function handleStartGame(config) {
 }
 
 function handleRestartGame() {
+  if (isOnlineGame.value) {
+    realtimeService.restartGame();
+  }
   controller.restart();
 }
 
 function goToMenu() {
+  if (isOnlineGame.value) {
+    isOnlineGame.value = false;
+    realtimeService.disconnect();
+  }
   controller.stop();
   currentScreen.value = 'setup';
 }
 
 function handleSelectCell([r, c]) {
+  if (isOnlineGame.value) {
+    if (controllerState.cur !== myOnlineSlot.value) return;
+    const piece = controllerState.board[r]?.[c];
+    if (piece && piece.p !== myOnlineSlot.value) return;
+  }
   controller.selectCell(r, c);
 }
 
 function handleMakeMove(move) {
+  if (isOnlineGame.value) {
+    if (controllerState.cur !== myOnlineSlot.value) return;
+    realtimeService.sendMove(move, myOnlineSlot.value);
+  }
   controller.executeMove(move);
 }
 
@@ -268,6 +344,9 @@ onMounted(() => {
   unsubscribe = controller.subscribe(updateFromController);
   updateFromController(controller.getControllerState());
 
+  realtimeService.on('moveMade', handleRemoteMove);
+  realtimeService.on('gameRestarted', handleRemoteRestart);
+
   document.documentElement.setAttribute('data-theme', 'light');
   document.documentElement.setAttribute('data-board-skin', boardSkin.value);
   document.body.setAttribute('data-board-skin', boardSkin.value);
@@ -277,6 +356,11 @@ onMounted(() => {
 onUnmounted(() => {
   if (unsubscribe) unsubscribe();
   if (controller.stop) controller.stop();
+  realtimeService.off('moveMade', handleRemoteMove);
+  realtimeService.off('gameRestarted', handleRemoteRestart);
+  if (isOnlineGame.value) {
+    realtimeService.disconnect();
+  }
 });
 </script>
 
@@ -329,5 +413,49 @@ onUnmounted(() => {
   .side-column {
     position: static;
   }
+}
+
+.online-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: var(--card-bg);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.online-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.turn-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--card-alt);
+  color: var(--text-dim);
+  border: 1px solid var(--border-dark);
+}
+
+.turn-tag.is-turn {
+  background: var(--pastel-yellow);
+  color: #1e293b;
+  border-color: var(--border-dark);
 }
 </style>
