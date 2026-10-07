@@ -2,11 +2,15 @@
 import { plusLaneMap } from './plusLane.js';
 import { defaultLaneMap } from './defaultLane.js';
 import { doubleLastLineDefenceMap } from './doubleLastLineDefence.js';
+import { humanWaveMap } from './human-wave.js';
+import { mapKustom752Map } from './map-kustom-752.js';
 
 const BUILTIN_MAPS = [
   plusLaneMap,
   defaultLaneMap,
-  doubleLastLineDefenceMap
+  doubleLastLineDefenceMap,
+  humanWaveMap,
+  mapKustom752Map
 ];
 
 const STORAGE_KEY = 'ultra_catur_custom_maps';

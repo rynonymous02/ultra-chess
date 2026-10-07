@@ -47,6 +47,7 @@
           <div class="online-pill">
             <span class="live-dot"></span>
             <span>Room: <strong>{{ currentOnlineRoom }}</strong></span>
+            <span class="online-map-tag">Map: <strong>{{ currentMapName }}</strong></span>
           </div>
           <div v-if="myOnlinePlayer" class="online-pill">
             <span>Anda:</span>
@@ -57,6 +58,7 @@
             >
               {{ controllerState.cur === myOnlineSlot ? 'Giliran Anda' : 'Menunggu Lawan' }}
             </span>
+            <span v-if="isAiHost" class="host-pill" title="Client ini yang mengendalikan AI">Host AI</span>
           </div>
         </div>
 
@@ -140,7 +142,7 @@ import StatusBanner from './components/StatusBanner.vue';
 import PlayerBar from './components/PlayerBar.vue';
 import MoveHistory from './components/MoveHistory.vue';
 import GameControls from './components/GameControls.vue';
-import { getMapById } from './maps/index.js';
+import { getMapById, saveCustomMap } from './maps/index.js';
 import MapEditor from './components/MapEditor.vue';
 import OnlineRoomModal from './components/OnlineRoomModal.vue';
 import { realtimeService } from './services/realtimeService.js';
@@ -244,11 +246,47 @@ const isOnlineModalOpen = ref(false);
 const isOnlineGame = ref(false);
 const currentOnlineRoom = ref('');
 const myOnlineSlot = ref(null);
+const peersList = ref(realtimeService.peers || []);
+
+const currentMapName = computed(() => {
+  return getMapById(selectedMap.value)?.name || selectedMap.value;
+});
+
+const isAiHost = computed(() => {
+  if (!isOnlineGame.value) return true;
+  const claimedPeers = (peersList.value || [])
+    .filter(p => p.slotIndex !== null && p.slotIndex !== undefined)
+    .sort((a, b) => a.slotIndex - b.slotIndex);
+
+  if (claimedPeers.length === 0) return true;
+  return claimedPeers[0].id === realtimeService.clientId;
+});
 
 const myOnlinePlayer = computed(() => {
   if (myOnlineSlot.value === null || myOnlineSlot.value === undefined) return null;
   return controllerState.players?.[myOnlineSlot.value] || players.value[myOnlineSlot.value] || null;
 });
+
+function handleBotMove(move, curPlayerIndex) {
+  if (isOnlineGame.value && isAiHost.value) {
+    realtimeService.sendMove(move, curPlayerIndex);
+  }
+}
+
+function syncOnlineConfig() {
+  controller.setOnlineConfig({
+    isOnline: isOnlineGame.value,
+    isHost: isAiHost.value,
+    onBotMove: handleBotMove
+  });
+}
+
+function handlePeersSync(data) {
+  peersList.value = data.peers || [];
+  if (isOnlineGame.value) {
+    syncOnlineConfig();
+  }
+}
 
 function handleMapSaved(newMapId) {
   selectedMap.value = newMapId;
@@ -258,6 +296,7 @@ function handleStartOnlineGame(config) {
   isOnlineGame.value = true;
   currentOnlineRoom.value = realtimeService.room;
   myOnlineSlot.value = realtimeService.mySlotIndex;
+  peersList.value = [...(realtimeService.peers || [])];
   handleStartGame(config);
 }
 
@@ -274,23 +313,31 @@ function handleRemoteRestart() {
 }
 
 function handleStartGame(config) {
+  if (config.mapData) {
+    saveCustomMap(config.mapData);
+  }
+  const effectiveMapId = config.mapId || selectedMap.value;
+  selectedMap.value = effectiveMapId;
+
   gameConfig.mode = config.mode;
-  gameConfig.lone = config.lone;
+  gameConfig.lone = config.lone !== undefined ? config.lone : 0;
   gameConfig.slots = [...config.slots];
 
   const activePlayers = config.players ? [...config.players] : [...players.value];
-  const selectedMapObj = getMapById(selectedMap.value);
-  const spawnCount = selectedMapObj?.playersCount || (selectedMap.value === 'double-last-line-defence' ? 5 : selectedMap.value === 'default-lane' ? 2 : 4);
+  const selectedMapObj = getMapById(effectiveMapId);
+  const spawnCount = selectedMapObj?.playersCount || (effectiveMapId === 'double-last-line-defence' ? 5 : effectiveMapId === 'default-lane' ? 2 : 4);
   const orderedPlayers = Array.from({ length: spawnCount }, (_, i) => i + 1).map((spawnNum, idx) => {
     const found = activePlayers.find(p => p.spawn === spawnNum) || activePlayers[spawnNum - 1] || PLAYERS[spawnNum - 1] || PLAYERS[idx] || { id: idx, name: 'Pemain ' + (idx + 1) };
     return { ...found, id: idx };
   });
 
+  syncOnlineConfig();
+
   controller.startNewGame({
     mode: config.mode,
     lone: config.lone,
     slots: config.slots,
-    mapId: selectedMap.value,
+    mapId: effectiveMapId,
     players: orderedPlayers
   });
 
@@ -309,6 +356,7 @@ function goToMenu() {
     isOnlineGame.value = false;
     realtimeService.disconnect();
   }
+  controller.setOnlineConfig({ isOnline: false, isHost: true });
   controller.stop();
   currentScreen.value = 'setup';
 }
@@ -344,6 +392,7 @@ onMounted(() => {
   unsubscribe = controller.subscribe(updateFromController);
   updateFromController(controller.getControllerState());
 
+  realtimeService.on('sync', handlePeersSync);
   realtimeService.on('moveMade', handleRemoteMove);
   realtimeService.on('gameRestarted', handleRemoteRestart);
 
@@ -356,6 +405,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (unsubscribe) unsubscribe();
   if (controller.stop) controller.stop();
+  realtimeService.off('sync', handlePeersSync);
   realtimeService.off('moveMade', handleRemoteMove);
   realtimeService.off('gameRestarted', handleRemoteRestart);
   if (isOnlineGame.value) {
@@ -457,5 +507,24 @@ onUnmounted(() => {
   background: var(--pastel-yellow);
   color: #1e293b;
   border-color: var(--border-dark);
+}
+
+.online-map-tag {
+  font-size: 11px;
+  background: var(--card-alt);
+  border: 1px solid var(--border-dark);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+}
+
+.host-pill {
+  font-size: 10px;
+  font-weight: 800;
+  background: var(--pastel-yellow);
+  color: #1e293b;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-dark);
 }
 </style>

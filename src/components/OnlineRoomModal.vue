@@ -129,6 +129,29 @@
           </button>
         </div>
 
+        <!-- Pilihan Map di Room -->
+        <div class="room-map-section neo-card">
+          <div class="map-section-head">
+            <span class="section-title">Map Pertandingan</span>
+            <span class="badge-map-count">{{ mapPlayersCount }} Pemain</span>
+          </div>
+          <div v-if="isRoomHost" class="map-select-box">
+            <select
+              :value="selectedRoomMap"
+              class="neo-input map-select"
+              @change="onHostMapChange"
+            >
+              <option v-for="m in allMaps" :key="m.id" :value="m.id">
+                {{ m.name }} ({{ m.playersCount || 4 }}P)
+              </option>
+            </select>
+          </div>
+          <div v-else class="non-host-map-display">
+            <span class="map-title-text">{{ currentMapObj?.name || selectedRoomMap }}</span>
+            <span class="map-host-badge">Ditentukan Host</span>
+          </div>
+        </div>
+
         <!-- Pilih Slot Pemain -->
         <div class="slot-section">
           <label class="section-title">Pilih Slot Anda:</label>
@@ -168,12 +191,16 @@
         <div class="action-footer">
           <button class="btn-leave" @click="leaveRoom">Keluar Room</button>
           <button
+            v-if="isRoomHost"
             class="btn-start"
             :disabled="!canStartGame"
             @click="startGame"
           >
             Mulai Pertandingan
           </button>
+          <div v-else class="waiting-host-box">
+            Menunggu Host memulai...
+          </div>
         </div>
       </div>
     </div>
@@ -184,6 +211,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { realtimeService } from '../services/realtimeService.js';
 import { PLAYERS } from '../models/ChessModel.js';
+import { getAllMaps, getMapById, saveCustomMap } from '../maps/index.js';
 
 const props = defineProps({
   currentMap: {
@@ -205,6 +233,7 @@ const emit = defineEmits(['close', 'start-online-game']);
 const playerName = ref(localStorage.getItem('ultra_catur_online_name') || 'Pemain ' + Math.floor(100 + Math.random() * 900));
 const manualRoomId = ref('');
 const errorMessage = ref('');
+const selectedRoomMap = ref(props.currentMap || 'plus-lane');
 
 const envUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -223,8 +252,23 @@ const peers = ref(realtimeService.peers);
 const activeRooms = ref(realtimeService.activeRooms || []);
 const copied = ref(false);
 
+const allMaps = computed(() => getAllMaps());
+
+const currentMapObj = computed(() => {
+  return getMapById(selectedRoomMap.value);
+});
+
+const mapPlayersCount = computed(() => {
+  return currentMapObj.value?.playersCount || (selectedRoomMap.value === 'double-last-line-defence' ? 5 : selectedRoomMap.value === 'default-lane' ? 2 : 4);
+});
+
+const isRoomHost = computed(() => {
+  if (!peers.value.length) return true;
+  return peers.value[0]?.id === realtimeService.clientId;
+});
+
 const availablePlayers = computed(() => {
-  return props.players.slice(0, 4);
+  return props.players.slice(0, mapPlayersCount.value);
 });
 
 const myClientId = computed(() => {
@@ -237,7 +281,7 @@ function getOccupant(slotIdx) {
 
 const canStartGame = computed(() => {
   const filledSlots = peers.value.filter(p => p.slotIndex !== null && p.slotIndex !== undefined);
-  return filledSlots.length >= 2;
+  return isRoomHost.value && filledSlots.length >= 1;
 });
 
 function savePlayerName() {
@@ -268,17 +312,53 @@ function joinSpecificRoom(roomId) {
   });
 }
 
+function onHostMapChange(event) {
+  const newMapId = event.target.value;
+  selectedRoomMap.value = newMapId;
+  const mapData = getMapById(newMapId);
+  realtimeService.changeRoomMap(newMapId, mapData);
+  realtimeService.trackInRoom({ mapId: newMapId, isHost: true });
+
+  if (mySlot.value !== null && mySlot.value >= mapPlayersCount.value) {
+    claimSlot(0);
+  }
+}
+
+function onMapChanged({ mapId, mapData }) {
+  if (mapData) {
+    saveCustomMap(mapData);
+  }
+  selectedRoomMap.value = mapId;
+  if (mySlot.value !== null && mySlot.value >= mapPlayersCount.value) {
+    claimSlot(0);
+  }
+}
+
 function claimSlot(slotIdx) {
-  realtimeService.claimSlot(slotIdx);
+  realtimeService.claimSlot(slotIdx, {
+    mapId: selectedRoomMap.value,
+    isHost: isRoomHost.value
+  });
   mySlot.value = slotIdx;
 }
 
 function startGame() {
+  const count = mapPlayersCount.value;
+  let mode = props.mode;
+  if (selectedRoomMap.value === 'double-last-line-defence') {
+    mode = '4v1';
+  } else if (selectedRoomMap.value === 'default-lane' || count === 2) {
+    mode = 'duel';
+  }
+
+  const mapObj = getMapById(selectedRoomMap.value);
+
   const config = {
-    mode: props.mode,
-    mapId: props.currentMap,
+    mode,
+    mapId: selectedRoomMap.value,
+    mapData: mapObj,
     players: props.players,
-    slots: Array.from({ length: 4 }, (_, idx) => {
+    slots: Array.from({ length: count }, (_, idx) => {
       const occupant = getOccupant(idx);
       return occupant ? 'human' : 'easy';
     })
@@ -308,6 +388,12 @@ function onSync(data) {
   if (self) {
     mySlot.value = self.slotIndex;
   }
+  if (data.hostMapId && selectedRoomMap.value !== data.hostMapId) {
+    selectedRoomMap.value = data.hostMapId;
+    if (mySlot.value !== null && mySlot.value >= mapPlayersCount.value) {
+      claimSlot(0);
+    }
+  }
 }
 
 function onStatusChange(data) {
@@ -319,6 +405,11 @@ function onStatusChange(data) {
   if (data.connected) {
     errorMessage.value = '';
     currentRoom.value = data.room;
+
+    if (isRoomHost.value) {
+      realtimeService.trackInRoom({ mapId: selectedRoomMap.value, isHost: true });
+    }
+
     // Otomatis pilih slot pertama yang kosong jika belum memilih
     setTimeout(() => {
       if (mySlot.value === null) {
@@ -347,6 +438,7 @@ onMounted(() => {
   realtimeService.on('statusChange', onStatusChange);
   realtimeService.on('gameStarted', onGameStarted);
   realtimeService.on('lobbyRooms', onLobbyRooms);
+  realtimeService.on('mapChanged', onMapChanged);
 
   // Subscribe ke lobby presence
   realtimeService.subscribeLobby(supabaseUrl.value, supabaseKey.value);
@@ -363,6 +455,7 @@ onUnmounted(() => {
   realtimeService.off('statusChange', onStatusChange);
   realtimeService.off('gameStarted', onGameStarted);
   realtimeService.off('lobbyRooms', onLobbyRooms);
+  realtimeService.off('mapChanged', onMapChanged);
 });
 </script>
 
@@ -788,5 +881,67 @@ onUnmounted(() => {
 .btn-start:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.room-map-section {
+  padding: 10px 12px;
+  background: var(--card-alt);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.badge-map-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  background: var(--pastel-yellow);
+  color: #1e293b;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-dark);
+}
+
+.map-select {
+  width: 100%;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.non-host-map-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.map-title-text {
+  color: var(--text-main);
+}
+
+.map-host-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.waiting-host-box {
+  flex: 1;
+  text-align: center;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--card-alt);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
 }
 </style>

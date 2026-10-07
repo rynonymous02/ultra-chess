@@ -18,7 +18,8 @@ class RealtimeService {
       moveMade: [],
       gameRestarted: [],
       statusChange: [],
-      lobbyRooms: []
+      lobbyRooms: [],
+      mapChanged: []
     };
   }
 
@@ -179,6 +180,9 @@ class RealtimeService {
 
       // Broadcast Game Events
       this.channel
+        .on('broadcast', { event: 'map-changed' }, ({ payload }) => {
+          this.emit('mapChanged', payload);
+        })
         .on('broadcast', { event: 'game-started' }, ({ payload }) => {
           this.trackInLobby(true);
           this.emit('gameStarted', payload);
@@ -216,6 +220,7 @@ class RealtimeService {
     if (!this.channel) return;
     const state = this.channel.presenceState();
     const list = [];
+    let hostMapId = null;
 
     for (const [key, presences] of Object.entries(state)) {
       if (presences && presences.length > 0) {
@@ -223,24 +228,44 @@ class RealtimeService {
         list.push({
           id: key,
           name: item.name || 'Pemain',
-          slotIndex: item.slotIndex !== undefined ? item.slotIndex : null
+          slotIndex: item.slotIndex !== undefined ? item.slotIndex : null,
+          isHost: !!item.isHost,
+          mapId: item.mapId || null
         });
+        if (item.mapId && (item.isHost || !hostMapId)) {
+          hostMapId = item.mapId;
+        }
       }
     }
 
     this.peers = list;
-    this.emit('sync', { peers: this.peers });
+    this.emit('sync', { peers: this.peers, hostMapId });
   }
 
-  async claimSlot(slotIndex) {
-    this.mySlotIndex = slotIndex;
+  async trackInRoom(extra = {}) {
     if (this.channel && this.connected) {
       await this.channel.track({
         id: this.clientId,
         name: this.userName,
-        slotIndex: this.mySlotIndex
+        slotIndex: this.mySlotIndex,
+        ...extra
       });
       await this.trackInLobby(false);
+    }
+  }
+
+  async claimSlot(slotIndex, extra = {}) {
+    this.mySlotIndex = slotIndex;
+    await this.trackInRoom(extra);
+  }
+
+  changeRoomMap(mapId, mapData = null) {
+    if (this.channel && this.connected) {
+      this.channel.send({
+        type: 'broadcast',
+        event: 'map-changed',
+        payload: { mapId, mapData }
+      });
     }
   }
 

@@ -17,6 +17,9 @@ export class GameController {
     this.legalMoves = [];
     this.isBotThinking = false;
     this.botTimer = null;
+    this.isOnline = options.isOnline || false;
+    this.isHost = options.isHost !== undefined ? options.isHost : true;
+    this.onBotMove = options.onBotMove || null;
   }
 
   subscribe(listener) {
@@ -131,6 +134,21 @@ export class GameController {
     return false;
   }
 
+  setOnlineConfig({ isOnline = false, isHost = true, onBotMove = null } = {}) {
+    this.isOnline = isOnline;
+    this.isHost = isHost;
+    if (onBotMove !== undefined) {
+      this.onBotMove = onBotMove;
+    }
+
+    if (this.isOnline && this.isHost) {
+      const state = this.model.getState();
+      if (!state.over && state.slots[state.cur] !== 'human' && !this.isBotThinking) {
+        this.checkAndTriggerBot();
+      }
+    }
+  }
+
   checkAndTriggerBot() {
     clearTimeout(this.botTimer);
     const state = this.model.getState();
@@ -142,6 +160,13 @@ export class GameController {
 
     const currentSlot = state.slots[state.cur];
     if (currentSlot !== 'human') {
+      // In online mode, non-hosts NEVER compute or trigger bot moves!
+      if (this.isOnline && !this.isHost) {
+        this.isBotThinking = true;
+        this.notify();
+        return;
+      }
+
       this.isBotThinking = true;
       this.notify();
 
@@ -158,6 +183,9 @@ export class GameController {
         this.isBotThinking = false;
 
         if (botMove) {
+          if (this.isOnline && typeof this.onBotMove === 'function') {
+            this.onBotMove(botMove, curState.cur);
+          }
           this.executeMove(botMove);
         } else {
           this.notify();
