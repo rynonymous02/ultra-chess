@@ -99,14 +99,15 @@ function getSlotText(idx, id) {
 
 <style scoped>
 .player-bar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-  margin: 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  width: 100%;
 }
 
 .player-card {
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   transition: all 0.15s ease;
@@ -128,7 +129,7 @@ function getSlotText(idx, id) {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .player-dot {
@@ -158,24 +159,29 @@ function getSlotText(idx, id) {
 
 .card-details {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 4px;
+  gap: 6px;
 }
 
 .team-sticker,
 .type-sticker {
   font-size: 11px;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.85);
   color: #1e293b;
   border: 1px solid var(--border-dark);
-  padding: 1px 6px;
+  padding: 2px 8px;
   border-radius: var(--radius-pill);
+  line-height: 1.3;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1023px) {
   .player-bar {
+    display: grid;
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
 }
 </style>

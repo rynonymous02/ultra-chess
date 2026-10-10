@@ -8,8 +8,9 @@
         :in-game="currentScreen === 'game'"
         @toggle-theme="toggleTheme"
         @toggle-sound="toggleSound"
-        @open-menu="goToMenu"
+        @open-menu="handleNavbarMenuClick"
         @open-online="isOnlineModalOpen = true"
+        @restart-game="handleRestartGame"
       />
 
       <!-- Setup View: 2 Kolom (Menu & Map Skirmish) -->
@@ -40,75 +41,88 @@
         </aside>
       </div>
 
-      <!-- In-Game View: 1 Kolom Terpusat (Hanya muncul saat game) -->
+      <!-- In-Game View: Desktop 3 Kolom (Kiri: Status/Pemain, Tengah: Papan Full, Kanan: Catatan Langkah) -->
       <main v-if="currentScreen === 'game'" class="game-layout">
-        <!-- Status Mode Online (Supabase Realtime) -->
-        <div v-if="isOnlineGame" class="online-indicator neo-card">
-          <div class="online-pill">
-            <span class="live-dot"></span>
-            <span>Room: <strong>{{ currentOnlineRoom }}</strong></span>
-            <span class="online-map-tag">Map: <strong>{{ currentMapName }}</strong></span>
+        <!-- Kolom Kiri: Status Pemain & Kontrol Pertandingan -->
+        <aside class="game-col-left">
+          <!-- Status Mode Online (Supabase Realtime) -->
+          <div v-if="isOnlineGame" class="online-indicator neo-card">
+            <div class="online-pill">
+              <span class="live-dot"></span>
+              <span>Room: <strong>{{ currentOnlineRoom }}</strong></span>
+              <span class="online-map-tag">Map: <strong>{{ currentMapName }}</strong></span>
+            </div>
+            <div v-if="myOnlinePlayer" class="online-pill">
+              <span>Anda:</span>
+              <strong :style="{ color: myOnlinePlayer.color }">{{ myOnlinePlayer.name }}</strong>
+              <span
+                class="turn-tag"
+                :class="{ 'is-turn': controllerState.cur === myOnlineSlot }"
+              >
+                {{ controllerState.cur === myOnlineSlot ? 'Giliran Anda' : 'Menunggu Lawan' }}
+              </span>
+              <span v-if="isAiHost" class="host-pill" title="Client ini yang mengendalikan AI">Host AI</span>
+            </div>
           </div>
-          <div v-if="myOnlinePlayer" class="online-pill">
-            <span>Anda:</span>
-            <strong :style="{ color: myOnlinePlayer.color }">{{ myOnlinePlayer.name }}</strong>
-            <span
-              class="turn-tag"
-              :class="{ 'is-turn': controllerState.cur === myOnlineSlot }"
-            >
-              {{ controllerState.cur === myOnlineSlot ? 'Giliran Anda' : 'Menunggu Lawan' }}
-            </span>
-            <span v-if="isAiHost" class="host-pill" title="Client ini yang mengendalikan AI">Host AI</span>
-          </div>
-        </div>
 
-        <!-- Status Giliran & Alert Skak -->
-        <StatusBanner
-          :cur-player="curPlayer"
-          :cur-slot="controllerState.slots ? controllerState.slots[controllerState.cur] : 'human'"
-          :in-check-names="controllerState.inCheckNames || []"
-          :event-message="controllerState.msg || ''"
-          :game-over="controllerState.over"
-          :is-bot-thinking="controllerState.isBotThinking"
-          @restart-game="handleRestartGame"
-          @open-menu="goToMenu"
-        />
+          <!-- Status Bar Pemain -->
+          <PlayerBar
+            :players="controllerState.players || players"
+            :cur-player-id="controllerState.cur"
+            :alive="controllerState.alive || []"
+            :mode="controllerState.mode || 'team'"
+            :slots="controllerState.slots || []"
+            :lone="gameConfig.lone"
+            :map-id="controllerState.mapId"
+          />
+        </aside>
 
-        <!-- Papan Catur -->
-        <ChessBoard
-          :board="controllerState.board || []"
-          :players="controllerState.players || players"
-          :selected-cell="controllerState.selectedCell"
-          :last-move="controllerState.last"
-          :legal-moves="controllerState.legalMoves || []"
-          :in-check-players="controllerState.checks || []"
-          :is-human-turn="controllerState.isHumanTurn"
-          :map-id="controllerState.mapId"
-          :board-skin="boardSkin"
-          @select-cell="handleSelectCell"
-          @make-move="handleMakeMove"
-        />
+        <!-- Kolom Tengah: Panggung Utama Papan Catur Full -->
+        <section class="game-col-center">
+          <!-- Status Giliran & Alert Skak -->
+          <StatusBanner
+            :cur-player="curPlayer"
+            :cur-slot="controllerState.slots ? controllerState.slots[controllerState.cur] : 'human'"
+            :in-check-names="controllerState.inCheckNames || []"
+            :event-message="controllerState.msg || ''"
+            :game-over="controllerState.over"
+            :is-bot-thinking="controllerState.isBotThinking"
+            @restart-game="handleRestartGame"
+            @open-menu="goToMenu"
+          />
 
-        <!-- Status Bar Pemain -->
-        <PlayerBar
-          :players="controllerState.players || players"
-          :cur-player-id="controllerState.cur"
-          :alive="controllerState.alive || []"
-          :mode="controllerState.mode || 'team'"
-          :slots="controllerState.slots || []"
-          :lone="gameConfig.lone"
-          :map-id="controllerState.mapId"
-        />
+          <!-- Papan Catur -->
+          <ChessBoard
+            :board="controllerState.board || []"
+            :players="controllerState.players || players"
+            :selected-cell="controllerState.selectedCell"
+            :last-move="controllerState.last"
+            :legal-moves="controllerState.legalMoves || []"
+            :in-check-players="controllerState.checks || []"
+            :is-human-turn="controllerState.isHumanTurn"
+            :map-id="controllerState.mapId"
+            :board-skin="boardSkin"
+            :rotation-angle="boardRotationAngle"
+            @select-cell="handleSelectCell"
+            @make-move="handleMakeMove"
+          />
+        </section>
 
-        <!-- Tombol Aksi Sederhana (Ulang & Menu) -->
-        <GameControls
-          @restart-game="handleRestartGame"
-          @open-menu="goToMenu"
-        />
-
-        <!-- Catatan Langkah -->
-        <MoveHistory :history="controllerState.history || []" />
+        <!-- Kolom Kanan: Catatan Langkah -->
+        <aside class="game-col-right">
+          <MoveHistory :history="controllerState.history || []" />
+        </aside>
       </main>
+
+      <!-- In-Game Menu Modal -->
+      <GameMenuModal
+        :is-open="isGameMenuModalOpen"
+        :auto-rotate="autoRotateBoard"
+        @update:auto-rotate="handleAutoRotateChange"
+        @close="isGameMenuModalOpen = false"
+        @restart="handleMenuRestart"
+        @main-menu="handleMenuExitToMain"
+      />
 
       <!-- Map Editor Modal (Terpisah dari alur layar utama) -->
       <MapEditor
@@ -141,10 +155,10 @@ import ChessBoard from './components/ChessBoard.vue';
 import StatusBanner from './components/StatusBanner.vue';
 import PlayerBar from './components/PlayerBar.vue';
 import MoveHistory from './components/MoveHistory.vue';
-import GameControls from './components/GameControls.vue';
-import { getMapById, saveCustomMap } from './maps/index.js';
+import { getMapById, saveCustomMap, isBuiltinMap } from './maps/index.js';
 import MapEditor from './components/MapEditor.vue';
 import OnlineRoomModal from './components/OnlineRoomModal.vue';
+import GameMenuModal from './components/GameMenuModal.vue';
 import { realtimeService } from './services/realtimeService.js';
 import { setSoundEnabled, isSoundEnabled } from './utils/sound.js';
 
@@ -152,7 +166,32 @@ const currentScreen = ref('setup'); // 'setup' | 'game'
 const isDark = ref(false);
 const soundEnabled = ref(true);
 const isEditorOpen = ref(false);
+const isGameMenuModalOpen = ref(false);
+const autoRotateBoard = ref(localStorage.getItem('ultra_catur_auto_rotate') === 'true');
 const boardSkin = ref(localStorage.getItem('ultra_catur_board_skin') || 'merah-putih');
+
+function handleNavbarMenuClick() {
+  if (currentScreen.value === 'game') {
+    isGameMenuModalOpen.value = true;
+  } else {
+    goToMenu();
+  }
+}
+
+function handleAutoRotateChange(val) {
+  autoRotateBoard.value = val;
+  localStorage.setItem('ultra_catur_auto_rotate', val ? 'true' : 'false');
+}
+
+function handleMenuRestart() {
+  isGameMenuModalOpen.value = false;
+  handleRestartGame();
+}
+
+function handleMenuExitToMain() {
+  isGameMenuModalOpen.value = false;
+  goToMenu();
+}
 
 function handleSkinChange(newSkin) {
   boardSkin.value = newSkin;
@@ -209,6 +248,24 @@ const curPlayer = computed(() => {
   return players.value[controllerState.cur] || PLAYERS[0];
 });
 
+const boardRotationAngle = computed(() => {
+  if (!autoRotateBoard.value || currentScreen.value !== 'game') return 0;
+  const curP = controllerState.cur;
+  const totalPlayers = (controllerState.players && controllerState.players.length) || 4;
+  const isTwoPlayers = controllerState.mapId === 'default-lane' || totalPlayers === 2;
+
+  if (isTwoPlayers) {
+    return curP === 1 ? 180 : 0;
+  }
+
+  switch (curP) {
+    case 1: return 270;
+    case 2: return 180;
+    case 3: return 90;
+    default: return 0;
+  }
+});
+
 function updateFromController(state) {
   controllerState.board = state.board;
   controllerState.cur = state.cur;
@@ -233,9 +290,11 @@ let unsubscribe = null;
 
 function handleMapChange(newMap) {
   selectedMap.value = newMap;
-  if (newMap === 'double-last-line-defence') {
+  const mapObj = getMapById(newMap);
+  const count = mapObj?.playersCount || (newMap === 'double-last-line-defence' ? 5 : newMap === 'default-lane' ? 2 : 4);
+  if (count === 5 || newMap === 'double-last-line-defence') {
     gameConfig.mode = '4v1';
-  } else if (newMap === 'default-lane') {
+  } else if (count === 2 || newMap === 'default-lane') {
     gameConfig.mode = 'duel';
   } else if (gameConfig.mode === '4v1' || gameConfig.mode === 'duel') {
     gameConfig.mode = 'team';
@@ -313,7 +372,7 @@ function handleRemoteRestart() {
 }
 
 function handleStartGame(config) {
-  if (config.mapData) {
+  if (config.mapData && !isBuiltinMap(config.mapData.id)) {
     saveCustomMap(config.mapData);
   }
   const effectiveMapId = config.mapId || selectedMap.value;
@@ -429,7 +488,7 @@ onUnmounted(() => {
 }
 
 .app-container.is-game {
-  max-width: 680px;
+  max-width: 1560px;
 }
 
 /* Setup: 2 Kolom */
@@ -449,11 +508,53 @@ onUnmounted(() => {
   top: 16px;
 }
 
-/* In-Game: 1 Kolom Terpusat */
+/* In-Game: Desktop 3 Kolom Terpadu */
 .game-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 280px;
+  gap: 20px;
+  align-items: start;
+  width: 100%;
+}
+
+.game-col-left,
+.game-col-right {
+  position: sticky;
+  top: 16px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.game-col-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .game-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .game-col-center {
+    order: 1;
+    width: 100%;
+  }
+  .game-col-left {
+    order: 2;
+    width: 100%;
+    position: static;
+  }
+  .game-col-right {
+    order: 3;
+    width: 100%;
+    position: static;
+  }
 }
 
 @media (max-width: 900px) {

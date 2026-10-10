@@ -2,7 +2,6 @@
   <aside class="map-panel neo-card">
     <div class="panel-header">
       <div class="header-badge">
-        <span class="badge-icon">🧭</span>
         <span>Peta & Lokasi Pemain</span>
       </div>
       <h3 class="panel-title">Radar 4 Sisi Papan</h3>
@@ -13,7 +12,7 @@
     <div class="mini-map-box neo-card">
       <div class="compass-label-wrap">
         <span class="compass-sticker">Orientasi Kompas 14&times;14</span>
-        <span class="turn-clockwise-tag">Searah Jarum Jam ↻</span>
+        <span class="turn-clockwise-tag">Searah Jarum Jam</span>
       </div>
 
       <div class="cross-radar">
@@ -27,7 +26,7 @@
             <span class="quad-name">{{ players[2].name }}</span>
             <span v-if="curPlayerId === 2 && alive[2]" class="active-badge">Giliran</span>
           </div>
-          <div class="quad-meta">Utara &bull; Bawah ⬇️</div>
+          <div class="quad-meta">Utara &bull; Bawah &darr;</div>
         </div>
 
         <div class="radar-middle-row">
@@ -41,12 +40,11 @@
               <span class="quad-name">{{ players[1].name }}</span>
               <span v-if="curPlayerId === 1 && alive[1]" class="active-badge">Giliran</span>
             </div>
-            <div class="quad-meta">Barat &bull; Kanan ➡️</div>
+            <div class="quad-meta">Barat &bull; Kanan &rarr;</div>
           </div>
 
           <!-- Central Core (Battlefield) -->
           <div class="radar-center">
-            <span class="center-icon">⚔️</span>
             <span class="center-text">Arena Pusat</span>
             <span class="center-sub">Zone 8&times;8</span>
           </div>
@@ -61,7 +59,7 @@
               <span class="quad-name">{{ players[3].name }}</span>
               <span v-if="curPlayerId === 3 && alive[3]" class="active-badge">Giliran</span>
             </div>
-            <div class="quad-meta">Timur &bull; Kiri ⬅️</div>
+            <div class="quad-meta">Timur &bull; Kiri &larr;</div>
           </div>
         </div>
 
@@ -75,7 +73,7 @@
             <span class="quad-name">{{ players[0].name }}</span>
             <span v-if="curPlayerId === 0 && alive[0]" class="active-badge">Giliran</span>
           </div>
-          <div class="quad-meta">Selatan &bull; Atas ⬆️</div>
+          <div class="quad-meta">Selatan &bull; Atas &uarr;</div>
         </div>
       </div>
     </div>

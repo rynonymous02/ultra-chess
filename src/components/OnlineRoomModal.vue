@@ -211,7 +211,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { realtimeService } from '../services/realtimeService.js';
 import { PLAYERS } from '../models/ChessModel.js';
-import { getAllMaps, getMapById, saveCustomMap } from '../maps/index.js';
+import { getAllMaps, getMapById, saveCustomMap, isBuiltinMap } from '../maps/index.js';
 
 const props = defineProps({
   currentMap: {
@@ -325,7 +325,7 @@ function onHostMapChange(event) {
 }
 
 function onMapChanged({ mapId, mapData }) {
-  if (mapData) {
+  if (mapData && !isBuiltinMap(mapData.id)) {
     saveCustomMap(mapData);
   }
   selectedRoomMap.value = mapId;

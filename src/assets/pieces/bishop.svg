@@ -1,0 +1,77 @@
+<svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="piece-shadow-b" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#000000" flood-opacity="0.45" />
+    </filter>
+  </defs>
+  <g filter="url(#piece-shadow-b)">
+    <!-- Base Body (Dynamic Player Color via currentColor) -->
+    <path
+      fill="currentColor"
+      d="
+        M50,8 A4.5,4.5 0 1,1 49.9,8 Z
+        M50,16
+        C42,16 34,25 34,38
+        C34,48 40,53 40,55
+        C37,56 36,57 36,60
+        L38,74
+        C34,75 30,78 29,82
+        L26,88 C26,90 28,91 30,91
+        L70,91 C72,91 74,90 74,88
+        L71,82 C70,78 66,75 62,74
+        L64,60
+        C64,57 63,56 60,55
+        C60,53 66,48 66,38
+        C66,25 58,16 50,16
+        Z
+      "
+    />
+    <!-- Light Highlight (Left Side) -->
+    <path
+      fill="#ffffff"
+      fill-opacity="0.22"
+      d="
+        M50,8 A4.5,4.5 0 0,0 47,15 c2,-1 3,-4 3,-7 Z
+        M50,16 C42,16 34,25 34,38 c0,9 5,14 6,16 l-2,4 l2,15 c-4,1 -7,4 -8,8 l-3,6 h10 l2,-13 c1,-3 2,-4 3,-4 l-1,-14 c-1,-3 -3,-7 -3,-12 c0,-8 5,-14 12,-18 Z
+      "
+    />
+    <!-- Cel-shaded Facet Shadow (Right Side) -->
+    <path
+      fill="#000000"
+      fill-opacity="0.38"
+      d="
+        M50,8 A4.5,4.5 0 0,1 54.5,12.5 A4.5,4.5 0 0,1 50,17 Z
+        M50,16
+        C58,16 66,25 66,38
+        C66,48 60,53 60,55
+        C63,56 64,57 64,60
+        L62,74
+        C66,75 70,78 71,82
+        L74,88 C74,90 72,91 70,91
+        L50,91
+        l2,-17 l-2,-14
+        C52,58 54,57 54,55
+        C54,54 51,52 51,48
+        L51,28 C51,26 50,25 50,25
+        Z
+      "
+    />
+    <!-- Signature Bishop Slit -->
+    <path
+      fill="#000000"
+      fill-opacity="0.5"
+      d="
+        M48,24 h3 v18 C51,44 48,44 48,42 Z
+      "
+    />
+    <!-- Underside Shadow Collar & Base -->
+    <path
+      fill="#000000"
+      fill-opacity="0.34"
+      d="
+        M37,59 h26 v2.5 h-26 Z
+        M28,89 h44 v2.5 h-44 Z
+      "
+    />
+  </g>
+</svg>

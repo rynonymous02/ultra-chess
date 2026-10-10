@@ -2,7 +2,7 @@
   <header class="navbar neo-card">
     <div class="brand">
       <div class="logo-box">
-        <span class="logo-glyph">♞</span>
+        <UiIcon name="knight" size="22" stroke-width="2" />
       </div>
       <h1 class="brand-title">Ultra Catur</h1>
     </div>
@@ -10,19 +10,40 @@
     <div class="nav-actions">
       <button
         v-if="inGame"
+        class="restart-nav-btn"
+        @click="$emit('restart-game')"
+        title="Ulangi Pertandingan"
+        aria-label="Ulang Pertandingan"
+      >
+        <span class="btn-icon">
+          <UiIcon name="restart" size="15" />
+        </span>
+        <span class="btn-text">Ulang</span>
+      </button>
+
+      <button
+        v-if="inGame"
         class="menu-nav-btn"
         @click="$emit('open-menu')"
         title="Kembali ke Menu Utama"
+        aria-label="Menu Utama"
       >
-        <span>⬅ Menu</span>
+        <span class="btn-icon">
+          <UiIcon name="menu" size="15" />
+        </span>
+        <span class="btn-text">Menu</span>
       </button>
 
       <button
         class="online-nav-btn"
         @click="$emit('open-online')"
         title="Mode Online Multiplayer (Supabase)"
+        aria-label="Online Multiplayer"
       >
-        <span>🌐 Online</span>
+        <span class="btn-icon">
+          <UiIcon name="online" size="15" />
+        </span>
+        <span class="btn-text">Online</span>
       </button>
 
       <button
@@ -31,8 +52,7 @@
         :title="soundEnabled ? 'Matikan Suara' : 'Nyalakan Suara'"
         aria-label="Toggle Suara"
       >
-        <span v-if="soundEnabled">🔊</span>
-        <span v-else>🔇</span>
+        <UiIcon :name="soundEnabled ? 'volume-on' : 'volume-off'" size="17" />
       </button>
 
       <button
@@ -41,14 +61,15 @@
         :title="isDark ? 'Mode Terang' : 'Mode Gelap'"
         aria-label="Toggle Tema"
       >
-        <span v-if="isDark">☀️</span>
-        <span v-else>🌙</span>
+        <UiIcon :name="isDark ? 'sun' : 'moon'" size="17" />
       </button>
     </div>
   </header>
 </template>
 
 <script setup>
+import UiIcon from './UiIcon.vue';
+
 defineProps({
   isDark: {
     type: Boolean,
@@ -64,7 +85,7 @@ defineProps({
   }
 });
 
-defineEmits(['toggle-theme', 'toggle-sound', 'open-menu', 'open-online']);
+defineEmits(['toggle-theme', 'toggle-sound', 'open-menu', 'open-online', 'restart-game']);
 </script>
 
 <style scoped>
@@ -121,12 +142,35 @@ defineEmits(['toggle-theme', 'toggle-sound', 'open-menu', 'open-online']);
   font-size: 16px;
 }
 
+.restart-nav-btn,
 .menu-nav-btn {
-  padding: 6px 14px;
+  padding: 6px 12px;
   font-size: 13px;
   font-weight: 800;
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  box-shadow: 2px 2px 0px var(--shadow-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.restart-nav-btn {
   background: var(--pastel-yellow);
   color: #1e293b;
+}
+
+.menu-nav-btn {
+  background: var(--card-alt);
+  color: var(--text-main);
+}
+
+.restart-nav-btn:hover,
+.menu-nav-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px var(--shadow-color);
 }
 
 .online-nav-btn {
@@ -147,5 +191,36 @@ defineEmits(['toggle-theme', 'toggle-sound', 'open-menu', 'open-online']);
 .online-nav-btn:hover {
   transform: translate(-1px, -1px);
   box-shadow: 3px 3px 0px var(--shadow-color);
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .brand-title {
+    font-size: 15px;
+  }
+  .logo-box {
+    width: 32px;
+    height: 32px;
+  }
+  .logo-glyph {
+    font-size: 16px;
+  }
+  .btn-text {
+    display: none;
+  }
+  .restart-nav-btn,
+  .menu-nav-btn,
+  .online-nav-btn,
+  .icon-btn {
+    padding: 0;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    justify-content: center;
+    font-size: 14px;
+  }
 }
 </style>

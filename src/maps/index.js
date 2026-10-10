@@ -15,16 +15,31 @@ const BUILTIN_MAPS = [
 
 const STORAGE_KEY = 'ultra_catur_custom_maps';
 
+export function isBuiltinMap(id) {
+  if (!id) return false;
+  return BUILTIN_MAPS.some(m => m.id === id);
+}
+
 export function getCustomMaps() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const list = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(list)) return [];
+    // Bersihkan map official/built-in yang mungkin sempat tersimpan ke localStorage
+    const filtered = list.filter(m => m && m.id && !isBuiltinMap(m.id));
+    if (filtered.length !== list.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    }
+    return filtered;
   } catch (e) {
     return [];
   }
 }
 
 export function saveCustomMap(mapData) {
+  if (!mapData || !mapData.id || isBuiltinMap(mapData.id)) {
+    return;
+  }
   try {
     const list = getCustomMaps();
     const idx = list.findIndex(m => m.id === mapData.id);
@@ -42,16 +57,20 @@ export function saveCustomMap(mapData) {
 export function saveMultipleCustomMaps(mapsArray) {
   try {
     const list = getCustomMaps();
+    let changed = false;
     for (const mapData of mapsArray) {
-      if (!mapData || !mapData.id) continue;
+      if (!mapData || !mapData.id || isBuiltinMap(mapData.id)) continue;
       const idx = list.findIndex(m => m.id === mapData.id);
       if (idx >= 0) {
         list[idx] = mapData;
       } else {
         list.push(mapData);
       }
+      changed = true;
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    if (changed) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
   } catch (e) {
     console.error('Gagal menyimpan beberapa custom map ke localStorage:', e);
   }
@@ -67,7 +86,16 @@ export function deleteCustomMap(id) {
 }
 
 export function getAllMaps() {
-  return [...BUILTIN_MAPS, ...getCustomMaps()];
+  const custom = getCustomMaps();
+  const seen = new Set();
+  const result = [];
+  for (const m of [...BUILTIN_MAPS, ...custom]) {
+    if (m && m.id && !seen.has(m.id)) {
+      seen.add(m.id);
+      result.push(m);
+    }
+  }
+  return result;
 }
 
 export function getMapById(id) {

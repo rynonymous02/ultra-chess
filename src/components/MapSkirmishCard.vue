@@ -9,7 +9,7 @@
           @click="triggerImport"
           title="Import file map (.js / .json)"
         >
-          <span>📁 Import Map</span>
+          <span>Import Map</span>
         </button>
         <button
           type="button"
@@ -38,61 +38,55 @@
         '--sq-dark': currentSkinVars.dark
       }"
     >
-      <!-- 8x8 Standard Board (1 vs 1) -->
-      <template v-if="currentMap === 'default-lane'">
-        <div class="mini-grid grid-8x8" role="img" aria-label="Preview Papan Catur 8x8">
-          <template v-for="r in 8" :key="'pr8_' + (r - 1)">
-            <div
-              v-for="c in 8"
-              :key="'pc8_' + (r - 1) + '_' + (c - 1)"
-              :class="['mini-cell', (r + c) % 2 === 0 ? 'light' : 'dark']"
+      <!-- Dynamic Mini Visual Chess Board Preview -->
+      <div
+        class="mini-grid dynamic-grid"
+        :style="{
+          '--grid-size': previewBoardSize,
+          '--cell-size': previewCellSize,
+          '--piece-size': previewPieceSize
+        }"
+        role="img"
+        aria-label="Preview Papan Catur"
+      >
+        <template v-for="r in previewBoardSize" :key="'pr_' + (r - 1)">
+          <div
+            v-for="c in previewBoardSize"
+            :key="'pc_' + (r - 1) + '_' + (c - 1)"
+            :class="getCellClass(r - 1, c - 1)"
+          >
+            <span
+              v-if="getPiece(r - 1, c - 1)"
+              class="mini-piece"
             >
-              <span
-                v-if="getPiece8x8(r - 1, c - 1)"
-                class="mini-piece"
-                :style="{ color: getPiece8x8(r - 1, c - 1).color }"
-              >
-                {{ getPieceSymbol(getPiece8x8(r - 1, c - 1).t) }}
-              </span>
-            </div>
-          </template>
-        </div>
+              <ChessPieceSvg
+                :type="getPiece(r - 1, c - 1).t"
+                :color="getPiece(r - 1, c - 1).color"
+                size="100%"
+              />
+            </span>
+          </div>
+        </template>
+      </div>
 
+      <!-- Spawn Beacons: 2 Pemain (Top & Bottom) -->
+      <template v-if="previewPlayersCount === 2">
         <div
-          class="spawn-beacon beacon-top-8"
+          class="spawn-beacon beacon-north"
           :style="{ backgroundColor: getSpawnPlayer(2)?.color || '#0ea5e9' }"
         >
           <span>2</span>
         </div>
         <div
-          class="spawn-beacon beacon-bottom-8"
+          class="spawn-beacon beacon-south"
           :style="{ backgroundColor: getSpawnPlayer(1)?.color || '#f43f5e' }"
         >
           <span>1</span>
         </div>
       </template>
 
-      <!-- 14x14 Board (Plus-Lane & Double-Last-Line Defence) -->
+      <!-- Spawn Beacons: 4+ Pemain (North, West, East, South, dan Center opsional) -->
       <template v-else>
-        <div class="mini-grid grid-14x14" role="img" aria-label="Preview Papan Catur 14x14">
-          <template v-for="r in 14" :key="'pr14_' + (r - 1)">
-            <div
-              v-for="c in 14"
-              :key="'pc14_' + (r - 1) + '_' + (c - 1)"
-              :class="getCellClass14(r - 1, c - 1)"
-            >
-              <span
-                v-if="getPiece14(r - 1, c - 1)"
-                class="mini-piece"
-                :style="{ color: getPiece14(r - 1, c - 1).color }"
-              >
-                {{ getPieceSymbol(getPiece14(r - 1, c - 1).t) }}
-              </span>
-            </div>
-          </template>
-        </div>
-
-        <!-- 4 Outer Spawn Beacons -->
         <div
           class="spawn-beacon beacon-north"
           :style="{ backgroundColor: getSpawnPlayer(3)?.color || '#eab308' }"
@@ -118,9 +112,8 @@
           <span>1</span>
         </div>
 
-        <!-- Center Beacon for Player 5 (Double-Last-Line Defence) -->
         <div
-          v-if="currentMap === 'double-last-line-defence'"
+          v-if="previewPlayersCount >= 5"
           class="spawn-beacon beacon-center"
           :style="{ backgroundColor: getSpawnPlayer(5)?.color || '#334155' }"
           title="Player 5: Benteng Pusat"
@@ -197,6 +190,7 @@ import {
   BOARD_SKINS
 } from '../models/ChessModel.js';
 import { getAllMaps, getMapById, saveMultipleCustomMaps } from '../maps/index.js';
+import ChessPieceSvg from './ChessPieceSvg.vue';
 
 const props = defineProps({
   currentMap: {
@@ -351,66 +345,88 @@ function getPieceSymbol(t) {
   return PIECE_SYMBOLS[t] || '';
 }
 
-// 8x8 Board Preview
-const board8x8 = computed(() => {
-  const b = Array.from({ length: 8 }, () => Array(8).fill(null));
-  const p1Color = getSpawnPlayer(1)?.color || '#f43f5e';
-  const p2Color = getSpawnPlayer(2)?.color || '#0ea5e9';
-
-  for (let i = 0; i < 8; i++) {
-    b[0][i] = { t: BACK_RANK_ORDER[i], color: p2Color };
-    b[1][i] = { t: 'P', color: p2Color };
-    b[6][i] = { t: 'P', color: p1Color };
-    b[7][i] = { t: BACK_RANK_ORDER[i], color: p1Color };
-  }
-  return b;
+const currentMapObj = computed(() => getMapById(props.currentMap));
+const previewBoardSize = computed(() => currentMapObj.value?.boardSize || 14);
+const previewPlayersCount = computed(() => {
+  return currentMapObj.value?.playersCount || (props.currentMap === 'double-last-line-defence' ? 5 : props.currentMap === 'default-lane' ? 2 : 4);
 });
 
-function getPiece8x8(r, c) {
-  return board8x8.value[r]?.[c] || null;
-}
+const previewCellSize = computed(() => {
+  const size = previewBoardSize.value;
+  if (size <= 8) return '26px';
+  if (size <= 10) return '22px';
+  if (size <= 12) return '18px';
+  if (size <= 14) return '16px';
+  if (size <= 16) return '14px';
+  return '12px';
+});
 
-// 14x14 Board Preview
-const board14x14 = computed(() => {
-  const b = Array.from({ length: 14 }, () => Array(14).fill(null));
-  const currentMapObj = getMapById(props.currentMap);
+const previewPieceSize = computed(() => {
+  const size = previewBoardSize.value;
+  if (size <= 8) return '18px';
+  if (size <= 10) return '16px';
+  if (size <= 12) return '14px';
+  if (size <= 14) return '13px';
+  if (size <= 16) return '11px';
+  return '9px';
+});
 
-  if (currentMapObj.initPieces) {
-    currentMapObj.initPieces(b, null, BACK_RANK_ORDER);
-    // Tint pieces with player colors
-    for (let r = 0; r < 14; r++) {
-      for (let c = 0; c < 14; c++) {
-        if (b[r][c]) {
-          const pl = getSpawnPlayer(b[r][c].p + 1);
-          b[r][c].color = pl?.color || '#ffffff';
+// Dynamic Board Preview
+const previewBoard = computed(() => {
+  const size = previewBoardSize.value;
+  const b = Array.from({ length: size }, () => Array(size).fill(null));
+  const map = currentMapObj.value;
+  if (!map) return b;
+
+  if (map.initPieces) {
+    try {
+      map.initPieces(b, null, BACK_RANK_ORDER);
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (b[r] && b[r][c]) {
+            const pl = getSpawnPlayer(b[r][c].p + 1);
+            b[r][c].color = pl?.color || '#ffffff';
+          }
         }
       }
+    } catch (e) {
+      console.warn('Gagal memuat initPieces:', e);
     }
-  } else if (currentMapObj.customPieces) {
-    for (const item of currentMapObj.customPieces) {
-      const pl = getSpawnPlayer(item.p + 1);
-      b[item.r][item.c] = { t: item.t, color: pl?.color || '#ffffff' };
+  } else if (map.customPieces && Array.isArray(map.customPieces)) {
+    for (const item of map.customPieces) {
+      if (item && item.r >= 0 && item.r < size && item.c >= 0 && item.c < size && b[item.r]) {
+        const pl = getSpawnPlayer(item.p + 1);
+        b[item.r][item.c] = { t: item.t, color: pl?.color || '#ffffff' };
+      }
     }
   }
   return b;
 });
 
-function getCellClass14(r, c) {
-  const currentMapObj = getMapById(props.currentMap);
-  if (currentMapObj.tiles) {
-    const tile = currentMapObj.tiles[r]?.[c];
+function getCellClass(r, c) {
+  const map = currentMapObj.value;
+  const size = previewBoardSize.value;
+  if (map?.tiles && Array.isArray(map.tiles)) {
+    const tile = map.tiles[r]?.[c];
     if (tile === 'void' || tile === 'omitted') return 'mini-cell omitted';
     if (tile === 'wall' || tile === 'obstacle') return 'mini-cell wall';
-  } else if (!isValidCell(r, c, 14)) {
-    return 'mini-cell omitted';
+  } else if (map?.isCross) {
+    if (!isValidCell(r, c, size)) return 'mini-cell omitted';
   }
   const isDark = (r + c) % 2 !== 0;
   return ['mini-cell', isDark ? 'dark' : 'light'];
 }
 
-function getPiece14(r, c) {
-  if (!isValidCell(r, c, 14)) return null;
-  return board14x14.value[r]?.[c] || null;
+function getPiece(r, c) {
+  const map = currentMapObj.value;
+  const size = previewBoardSize.value;
+  if (map?.tiles && Array.isArray(map.tiles)) {
+    const tile = map.tiles[r]?.[c];
+    if (tile === 'void' || tile === 'omitted' || tile === 'wall' || tile === 'obstacle') return null;
+  } else if (map?.isCross) {
+    if (!isValidCell(r, c, size)) return null;
+  }
+  return previewBoard.value[r]?.[c] || null;
 }
 </script>
 
@@ -490,6 +506,11 @@ function getPiece14(r, c) {
   border-radius: 4px;
 }
 
+.dynamic-grid {
+  grid-template-columns: repeat(var(--grid-size, 14), var(--cell-size, 16px));
+  grid-template-rows: repeat(var(--grid-size, 14), var(--cell-size, 16px));
+}
+
 .grid-14x14 {
   --cell-size: 16px;
   grid-template-columns: repeat(14, var(--cell-size));
@@ -535,12 +556,11 @@ function getPiece14(r, c) {
 }
 
 .mini-piece {
-  font-size: 13px;
-  line-height: 1;
-}
-
-.grid-8x8 .mini-piece {
-  font-size: 18px;
+  width: var(--piece-size, 13px);
+  height: var(--piece-size, 13px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Spawn Beacons */

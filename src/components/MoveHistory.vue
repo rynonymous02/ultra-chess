@@ -2,7 +2,7 @@
   <div class="history-panel neo-card">
     <div class="history-header">
       <div class="title-wrap">
-        <span class="history-icon">📜</span>
+        <UiIcon name="history" size="18" />
         <h3 class="history-title">Catatan Langkah</h3>
       </div>
       <span class="badge-count">{{ history.length }} Langkah</span>
@@ -10,9 +10,18 @@
 
     <!-- Rating Legend Stickers -->
     <div class="rating-legend">
-      <span class="legend-sticker sticker-genius">★ Genius</span>
-      <span class="legend-sticker sticker-good">✔ Bagus</span>
-      <span class="legend-sticker sticker-blunder">✘ Blunder</span>
+      <span class="legend-sticker sticker-genius">
+        <UiIcon name="star" size="11" />
+        Genius
+      </span>
+      <span class="legend-sticker sticker-good">
+        <UiIcon name="check" size="11" />
+        Bagus
+      </span>
+      <span class="legend-sticker sticker-blunder">
+        <UiIcon name="x" size="11" />
+        Blunder
+      </span>
     </div>
 
     <!-- Move List -->
@@ -32,7 +41,9 @@
           <span class="piece-glyph">{{ getPieceSymbol(h.t) }}</span>
           <span class="algebraic">{{ h.fromNotation }} &rarr; {{ h.toNotation }}</span>
           <span v-if="h.cap" class="capture-text">&times; {{ getPieceSymbol(h.cap) }}</span>
-          <span v-if="h.promo" class="promo-text">= ♛</span>
+          <span v-if="h.promo" class="promo-text">
+            = <UiIcon name="crown" size="12" />
+          </span>
         </div>
 
         <!-- Rating Badge -->
@@ -41,6 +52,21 @@
           :class="['rating-badge', 'bd-' + h.rating]"
           :title="getRatingTitle(h.rating)"
         >
+          <UiIcon
+            v-if="h.rating === 'genius'"
+            name="star"
+            size="10"
+          />
+          <UiIcon
+            v-else-if="h.rating === 'good'"
+            name="check"
+            size="10"
+          />
+          <UiIcon
+            v-else-if="h.rating === 'blunder'"
+            name="x"
+            size="10"
+          />
           {{ getRatingLabel(h.rating) }}
         </span>
       </div>
@@ -50,6 +76,7 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue';
+import UiIcon from './UiIcon.vue';
 import {
   PLAYERS,
   PIECE_SYMBOLS,
@@ -87,6 +114,7 @@ watch(
     await nextTick();
     if (listRef.value) {
       listRef.value.scrollTop = listRef.value.scrollHeight;
+      listRef.value.scrollLeft = listRef.value.scrollWidth;
     }
   }
 );
@@ -146,6 +174,9 @@ watch(
   padding: 2px 8px;
   border-radius: var(--radius-pill);
   box-shadow: 1px 1px 0px var(--shadow-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .sticker-genius { background: var(--pastel-purple); color: #5b21b6; }
@@ -153,7 +184,8 @@ watch(
 .sticker-blunder { background: var(--pastel-rose); color: #9f1239; }
 
 .history-list {
-  max-height: 180px;
+  max-height: min(65vh, 540px);
+  min-height: 140px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -224,6 +256,9 @@ watch(
   color: #d97706;
   font-weight: 800;
   font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .rating-badge {
@@ -234,9 +269,70 @@ watch(
   border-radius: var(--radius-pill);
   border: 1.5px solid var(--border-dark);
   box-shadow: 1px 1px 0px var(--shadow-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .bd-genius { background: var(--pastel-purple); color: #5b21b6; }
 .bd-good { background: var(--pastel-green); color: #15803d; }
 .bd-blunder { background: var(--pastel-rose); color: #9f1239; }
+
+@media (max-width: 1023px) {
+  .history-panel {
+    margin-top: 4px;
+    padding: 10px 12px;
+  }
+
+  .rating-legend {
+    display: none;
+  }
+
+  .history-list {
+    min-height: unset;
+    max-height: unset;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    padding: 2px 2px 6px 2px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .history-list::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .history-list::-webkit-scrollbar-track {
+    background: var(--bg-canvas);
+    border-radius: var(--radius-pill);
+  }
+
+  .history-list::-webkit-scrollbar-thumb {
+    background: var(--border-dark);
+    border-radius: var(--radius-pill);
+  }
+
+  .empty-state {
+    padding: 6px 0;
+    width: 100%;
+    text-align: left;
+  }
+
+  .history-row {
+    flex-shrink: 0;
+    white-space: nowrap;
+    background: var(--card-alt);
+    border: 1.5px solid var(--border-dark);
+    border-radius: var(--radius-sm);
+    box-shadow: 1.5px 1.5px 0px var(--shadow-color);
+    padding: 5px 9px;
+    gap: 6px;
+  }
+
+  .history-row:hover {
+    background: var(--card-alt);
+  }
+}
 </style>

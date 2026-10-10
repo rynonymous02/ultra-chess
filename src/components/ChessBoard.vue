@@ -9,7 +9,8 @@
         '--sq-dark': currentSkinVars.dark,
         '--sq-sel': currentSkinVars.sel,
         '--sq-last': currentSkinVars.last,
-        '--sq-check': currentSkinVars.check
+        '--sq-check': currentSkinVars.check,
+        transform: `rotate(${rotationAngle}deg)`
       }"
     >
       <div
@@ -37,14 +38,17 @@
               :class="['move-marker', { 'capture-ring': isCaptureTarget(r - 1, c - 1) }]"
             ></span>
 
-            <!-- Chess Piece -->
-            <span
+            <!-- Chess Piece SVG -->
+            <div
               v-if="getPiece(r - 1, c - 1)"
               class="chess-piece"
-              :style="{ color: getPieceColor(r - 1, c - 1) }"
             >
-              {{ getPieceSymbol(r - 1, c - 1) }}
-            </span>
+              <ChessPieceSvg
+                :type="getPiece(r - 1, c - 1).t"
+                :color="getPieceColor(r - 1, c - 1)"
+                size="100%"
+              />
+            </div>
           </div>
         </template>
       </div>
@@ -54,6 +58,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import ChessPieceSvg from './ChessPieceSvg.vue';
 import {
   isValidCell,
   PIECE_SYMBOLS,
@@ -99,6 +104,10 @@ const props = defineProps({
   boardSkin: {
     type: String,
     default: 'merah-putih'
+  },
+  rotationAngle: {
+    type: Number,
+    default: 0
   }
 });
 
@@ -113,11 +122,11 @@ const currentMapData = computed(() => getMapById(props.mapId));
 
 const dynamicSquareSize = computed(() => {
   const N = boardSize.value;
-  if (N <= 8) return 'min(10vw, 56px)';
-  if (N <= 10) return 'min(7.8vw, 48px)';
-  if (N <= 12) return 'min(6.6vw, 44px)';
-  if (N <= 14) return 'min(5.8vw, 40px)';
-  return 'min(4.8vw, 34px)';
+  if (N <= 8) return 'clamp(44px, min(8.5vh, 7vw), 72px)';
+  if (N <= 10) return 'clamp(36px, min(7vh, 5.8vw), 58px)';
+  if (N <= 12) return 'clamp(30px, min(6vh, 4.8vw), 48px)';
+  if (N <= 14) return 'clamp(26px, min(5.2vh, 4.2vw), 44px)';
+  return 'clamp(22px, min(4.2vh, 3.4vw), 36px)';
 });
 
 function isValid(r, c) {
@@ -226,23 +235,18 @@ function handleCellClick(r, c) {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 6px;
-  overflow-x: auto;
+  padding: 4px;
+  width: 100%;
 }
 
 .board-container {
-  --sq-size: min(5.9vw, 42px);
   display: inline-block;
   padding: 10px;
   background: var(--card-bg);
   border: var(--border-thick);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-}
-
-/* 8x8 standard 1v1 board has larger comfortable squares */
-.board-container.is-8x8 {
-  --sq-size: min(10vw, 58px);
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .chess-grid {
@@ -330,15 +334,18 @@ function handleCellClick(r, c) {
 }
 
 .chess-piece {
-  font-size: calc(var(--sq-size) * 0.82);
-  line-height: 1;
-  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.95)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.65));
-  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.4);
-  transition: transform 0.15s ease;
-  z-index: 1;
+  width: 84%;
+  height: 84%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .cell-playable:hover .chess-piece {
-  transform: scale(1.12);
+  transform: scale(1.15) translateY(-3px);
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45));
 }
 </style>

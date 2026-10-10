@@ -23,7 +23,9 @@
 
     <!-- Check Warning Alert -->
     <div v-if="inCheckNames && inCheckNames.length > 0 && !gameOver" class="alert-banner alert-check">
-      <span class="alert-icon">⚠️</span>
+      <span class="alert-icon">
+        <UiIcon name="warning" size="18" />
+      </span>
       <div class="alert-msg">
         <strong>SKAK:</strong> {{ inCheckNames.join(', ') }}
         <span v-if="isCurrentPlayerInCheck" class="alert-sub">— Segera amankan raja!</span>
@@ -32,14 +34,18 @@
 
     <!-- Event Message -->
     <div v-if="eventMessage" class="alert-banner alert-event">
-      <span class="alert-icon">⚡</span>
+      <span class="alert-icon">
+        <UiIcon name="zap" size="18" />
+      </span>
       <div class="alert-msg">{{ eventMessage }}</div>
     </div>
 
     <!-- Game Over Modal -->
     <div v-if="gameOver" class="gameover-overlay">
       <div class="gameover-modal neo-card">
-        <div class="trophy-box">🏆</div>
+        <div class="trophy-box">
+          <UiIcon name="trophy" size="44" />
+        </div>
         <h2 class="gameover-title">Pertandingan Selesai!</h2>
         <div class="winner-pill">{{ gameOver }}</div>
 
@@ -59,6 +65,7 @@
 <script setup>
 import { computed, watch } from 'vue';
 import confetti from 'canvas-confetti';
+import UiIcon from './UiIcon.vue';
 import { DIFFICULTY_LABELS } from '../models/ChessModel.js';
 
 const props = defineProps({

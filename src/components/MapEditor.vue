@@ -94,10 +94,15 @@
                   v-for="(sym, key) in pieces"
                   :key="key"
                   type="button"
-                  :class="['tool-btn', { active: selectedPiece === key && currentTool === 'place' }]"
+                  :class="['tool-btn', 'piece-chip-btn', { active: selectedPiece === key && currentTool === 'place' }]"
                   @click="selectedPiece = key; currentTool = 'place'"
+                  :title="key"
                 >
-                  {{ sym }}
+                  <ChessPieceSvg
+                    :type="key"
+                    :color="getPlayerColor(selectedPlayer)"
+                    size="24"
+                  />
                 </button>
                 <button
                   type="button"
@@ -163,16 +168,20 @@
               :style="{ width: editorCellSize + 'px', height: editorCellSize + 'px' }"
               @click="handleCellClick(r - 1, c - 1)"
             >
-              <span
+              <div
                 v-if="grid[r - 1]?.[c - 1]"
-                class="piece-text"
+                class="editor-piece-wrap"
                 :style="{
-                  color: getPlayerColor(grid[r - 1][c - 1].p),
-                  fontSize: Math.round(editorCellSize * 0.65) + 'px'
+                  width: Math.round(editorCellSize * 0.85) + 'px',
+                  height: Math.round(editorCellSize * 0.85) + 'px'
                 }"
               >
-                {{ pieces[grid[r - 1][c - 1].t] }}
-              </span>
+                <ChessPieceSvg
+                  :type="grid[r - 1][c - 1].t"
+                  :color="getPlayerColor(grid[r - 1][c - 1].p)"
+                  size="100%"
+                />
+              </div>
             </div>
           </template>
         </div>
@@ -202,6 +211,7 @@
 import { ref, computed } from 'vue';
 import { PLAYERS, PIECE_SYMBOLS, isValidCell } from '../models/ChessModel.js';
 import { saveCustomMap } from '../maps/index.js';
+import ChessPieceSvg from './ChessPieceSvg.vue';
 
 const emit = defineEmits(['close', 'map-saved']);
 
@@ -593,6 +603,13 @@ export const ${camelName}Map = {
   border-radius: 4px;
 }
 
+.piece-chip-btn {
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .tool-btn.active {
   background: var(--pastel-yellow);
   box-shadow: 2px 2px 0px var(--shadow-color);
@@ -697,10 +714,11 @@ export const ${camelName}Map = {
   filter: brightness(1.2);
 }
 
-.piece-text {
-  font-size: 20px;
-  line-height: 1;
-  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 1px 2px #000);
+.piece-text,
+.editor-piece-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .status-toast {

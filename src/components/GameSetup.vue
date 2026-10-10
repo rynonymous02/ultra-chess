@@ -101,10 +101,10 @@
           <div class="col-role">
             <label class="cell-label" :for="'role-' + player.id">Kontrol</label>
             <select :id="'role-' + player.id" v-model="slots[player.id]" class="role-select">
-              <option value="human">👤 Human</option>
-              <option value="easy">🤖 Bot Santai</option>
-              <option value="med">🤖 Bot Taktis</option>
-              <option value="hard">🤖 Bot Master</option>
+              <option value="human">Human</option>
+              <option value="easy">Bot Santai</option>
+              <option value="med">Bot Taktis</option>
+              <option value="hard">Bot Master</option>
             </select>
           </div>
         </div>
@@ -122,6 +122,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { COLOR_PRESETS } from '../models/ChessModel.js';
+import { getMapById } from '../maps/index.js';
 
 const props = defineProps({
   mode: {
@@ -155,14 +156,19 @@ const slots = ref([...props.initialSlots]);
 const playerList = ref(props.players.map(p => ({ ...p })));
 const activeColorPickerId = ref(null);
 
+const currentMapObj = computed(() => getMapById(props.currentMap));
+const mapPlayersCount = computed(() => {
+  return currentMapObj.value?.playersCount || (props.currentMap === 'double-last-line-defence' ? 5 : props.currentMap === 'default-lane' ? 2 : 4);
+});
+
 const availableModes = computed(() => {
-  if (props.currentMap === 'double-last-line-defence') {
+  if (props.currentMap === 'double-last-line-defence' || mapPlayersCount.value === 5) {
     return [
       { id: '4v1', name: '4 vs 1 (Player 5)', desc: 'Koalisi vs Player 5' },
       { id: 'ffa', name: 'Free For All', desc: '5 Pemain Bebas' }
     ];
   }
-  if (props.currentMap === 'default-lane') {
+  if (props.currentMap === 'default-lane' || mapPlayersCount.value === 2) {
     return [
       { id: 'duel', name: '1 vs 1 (Duel)', desc: 'Duel Standar' }
     ];
@@ -175,23 +181,11 @@ const availableModes = computed(() => {
 });
 
 const availableSpawns = computed(() => {
-  if (props.currentMap === 'double-last-line-defence') {
-    return [1, 2, 3, 4, 5];
-  }
-  if (props.currentMap === 'default-lane') {
-    return [1, 2];
-  }
-  return [1, 2, 3, 4];
+  return Array.from({ length: mapPlayersCount.value }, (_, i) => i + 1);
 });
 
 const visiblePlayers = computed(() => {
-  if (props.currentMap === 'default-lane') {
-    return playerList.value.slice(0, 2);
-  }
-  if (props.currentMap === 'double-last-line-defence') {
-    return playerList.value.slice(0, 5);
-  }
-  return playerList.value.slice(0, 4);
+  return playerList.value.slice(0, mapPlayersCount.value);
 });
 
 watch(
@@ -230,18 +224,19 @@ watch(currentLone, (newVal) => {
 });
 
 function getTeamLabel(playerId) {
-  if (props.currentMap === 'double-last-line-defence') {
+  if (props.currentMap === 'double-last-line-defence' || mapPlayersCount.value === 5) {
     if (currentMode.value === '4v1') {
       return playerId === 4 ? 'Solo Benteng' : 'Koalisi 4';
     }
     return 'FFA';
   }
+  if (currentMode.value === 'duel' || mapPlayersCount.value === 2) {
+    return playerId === 0 ? 'Putih' : 'Hitam';
+  }
   if (currentMode.value === 'team') {
     return playerId % 2 === 0 ? 'Tim A' : 'Tim B';
   } else if (currentMode.value === 'solo') {
     return playerId === currentLone.value ? 'Solo' : 'Koalisi';
-  } else if (currentMode.value === 'duel') {
-    return playerId === 0 ? 'Putih' : 'Hitam';
   }
   return 'FFA';
 }
